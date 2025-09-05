@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Pause, Square, SkipForward, RotateCcw, Home, Volume2 } from 'lucide-react';
+import { Play, Pause, RotateCcw, Home, Volume2 } from 'lucide-react';
 
 interface TrainingControlsProps {
   isRunning: boolean;
@@ -10,7 +10,6 @@ interface TrainingControlsProps {
   ttsEnabled: boolean;
   onStart: () => void;
   onStop: () => void;
-  onNext: () => void;
   onReset: () => void;
   onHome: () => void;
   onDelayChange: (value: number) => void;
@@ -20,21 +19,21 @@ interface TrainingControlsProps {
 }
 
 const TRAINING_MODES = [
-  'full-court',
-  'front-court',
-  'back-court',
-  'corners',
-  'left-side',
-  'right-side',
-  'random-1-2-3-4-8',
-  'random-4-5-6-7-8',
-  'random-4-8',
-  'random-2-4-6-8',
-  'random-1-5',
-  'random-2-6',
-  'random-3-7',
-  'random-5-7',
-  'random-1-3-6'
+  { value: 'full-court', label: 'Full court (1-2-3-4-5-6-7-8)' },
+  { value: 'front-court', label: 'Front Court (1-2-3)' },
+  { value: 'back-court', label: 'Back Court (5-6-7)' },
+  { value: 'corners', label: 'Corners (1-3-5-7)' },
+  { value: 'left-side', label: 'Left Side (1-7-8)' },
+  { value: 'right-side', label: 'Right Side (3-4-5)' },
+  { value: 'random-1-2-3-4-8', label: 'Random 1-2-3-4-8' },
+  { value: 'random-4-5-6-7-8', label: 'Random 4-5-6-7-8' },
+  { value: 'random-4-8', label: 'Random 4-8' },
+  { value: 'random-2-4-6-8', label: 'Random 2- 4- 6- 8' },
+  { value: 'random-1-5', label: 'Random 1-5' },
+  { value: 'random-2-6', label: 'Random 2-6' },
+  { value: 'random-3-7', label: 'Random 3-7' },
+  { value: 'random-5-7', label: 'Random 5-7' },
+  { value: 'random-1-3-6', label: 'Random 1-3-6' }
 ];
 
 const TrainingControls: React.FC<TrainingControlsProps> = ({
@@ -46,7 +45,6 @@ const TrainingControls: React.FC<TrainingControlsProps> = ({
   ttsEnabled,
   onStart,
   onStop,
-  onNext,
   onReset,
   onHome,
   onDelayChange,
@@ -83,15 +81,6 @@ const TrainingControls: React.FC<TrainingControlsProps> = ({
           <span className="ml-2">{isRunning ? 'Stop' : 'Start'}</span>
         </button>
         
-        <button
-          onClick={onNext}
-          className="btn-secondary"
-          disabled={!isRunning}
-          aria-label="Next position"
-        >
-          <SkipForward size={18} />
-          <span className="ml-2">Next</span>
-        </button>
         
         <button
           onClick={onReset}
@@ -152,8 +141,8 @@ const TrainingControls: React.FC<TrainingControlsProps> = ({
             aria-label="Select training mode"
           >
             {TRAINING_MODES.map((modeOption) => (
-              <option key={modeOption} value={modeOption}>
-                {modeOption.charAt(0).toUpperCase() + modeOption.slice(1).replace('-', ' ')}
+              <option key={modeOption.value} value={modeOption.value}>
+                {modeOption.label}
               </option>
             ))}
           </select>

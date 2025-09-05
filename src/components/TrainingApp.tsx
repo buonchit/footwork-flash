@@ -126,21 +126,26 @@ const TrainingApp: React.FC = () => {
     oscillator.stop(audioContext.currentTime + 0.3);
   }, []);
 
-  // Get next position avoiding consecutive repeats
-  const getNextPosition = useCallback((): number => {
-    const modePositions = getCurrentModePositions();
-    if (modePositions.length <= 1) {
-      return modePositions[0];
+  // Uniform position chooser avoiding consecutive repeats
+  const chooseNext = useCallback((allowed: number[], lastId: number | null): number => {
+    if (allowed.length <= 1) {
+      return allowed[0];
     }
     
     let nextPos;
     do {
-      const randomIndex = Math.floor(Math.random() * modePositions.length);
-      nextPos = modePositions[randomIndex];
-    } while (nextPos === state.lastPosition);
+      const randomIndex = Math.floor(Math.random() * allowed.length);
+      nextPos = allowed[randomIndex];
+    } while (nextPos === lastId && allowed.length > 1);
     
     return nextPos;
-  }, [getCurrentModePositions, state.lastPosition]);
+  }, []);
+
+  // Get next position using uniform chooser
+  const getNextPosition = useCallback((): number => {
+    const modePositions = getCurrentModePositions();
+    return chooseNext(modePositions, state.lastPosition);
+  }, [getCurrentModePositions, state.lastPosition, chooseNext]);
 
   // Move to next position
   const moveToNextPosition = useCallback(() => {
@@ -211,7 +216,7 @@ const TrainingApp: React.FC = () => {
 
   // Stop training
   const stopTraining = useCallback(() => {
-    setState(prev => ({ ...prev, running: false, activePosition: null }));
+    setState(prev => ({ ...prev, running: false, activePosition: null, lastPosition: null }));
     
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
@@ -247,10 +252,6 @@ const TrainingApp: React.FC = () => {
     });
   }, [stopTraining, toast]);
 
-  // Next position manually (legacy function for compatibility)
-  const nextPosition = useCallback(() => {
-    triggerNext();
-  }, [triggerNext]);
 
   // Home function (placeholder)
   const goHome = useCallback(() => {
@@ -289,10 +290,6 @@ const TrainingApp: React.FC = () => {
             startTraining();
           }
           break;
-        case 'ArrowRight':
-          event.preventDefault();
-          triggerNext();
-          break;
         case 'Digit1':
         case 'Digit2':
         case 'Digit3':
@@ -311,7 +308,7 @@ const TrainingApp: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [state.running, startTraining, stopTraining, nextPosition, playAudioFeedback]);
+  }, [state.running, startTraining, stopTraining, playAudioFeedback]);
 
   // Touch/swipe gestures
   useEffect(() => {
@@ -335,8 +332,7 @@ const TrainingApp: React.FC = () => {
       // Check for horizontal swipe (≥50px)
       if (Math.abs(deltaX) >= 50 && Math.abs(deltaX) > Math.abs(deltaY)) {
         if (deltaX > 0) {
-          // Swipe right - next position
-          nextPosition();
+          // Swipe functionality removed
         }
       }
       
@@ -351,7 +347,7 @@ const TrainingApp: React.FC = () => {
       document.removeEventListener('touchstart', handleTouchStart);
       document.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [nextPosition]);
+  }, []);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -400,12 +396,17 @@ const TrainingApp: React.FC = () => {
             onClick={stopTraining}
             className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 
                        bg-red-600 hover:bg-red-700 text-white font-bold 
-                       w-24 h-24 rounded-full shadow-lg z-10 
-                       flex items-center justify-center text-lg
+                       w-28 h-28 rounded-full shadow-lg z-10 
+                       flex flex-col items-center justify-center text-sm
                        transition-colors duration-200"
             aria-label="Stop Training"
           >
-            STOP
+            <span>STOP</span>
+            {state.timerValue > 0 && state.timeRemaining > 0 && (
+              <span className="text-xs mt-1">
+                ({Math.floor(state.timeRemaining / 60)}:{(state.timeRemaining % 60).toString().padStart(2, '0')})
+              </span>
+            )}
           </button>
         )}
       </main>
@@ -422,12 +423,11 @@ const TrainingApp: React.FC = () => {
             ttsEnabled={state.ttsEnabled}
             onStart={startTraining}
             onStop={stopTraining}
-            onNext={nextPosition}
             onReset={resetTraining}
             onHome={goHome}
             onDelayChange={(delay) => setState(prev => ({ ...prev, delay }))}
             onTimerChange={(timerValue) => setState(prev => ({ ...prev, timerValue, timeRemaining: timerValue }))}
-            onModeChange={(mode) => setState(prev => ({ ...prev, mode }))}
+            onModeChange={(mode) => setState(prev => ({ ...prev, mode, lastPosition: null }))}
             onTtsToggle={() => setState(prev => ({ ...prev, ttsEnabled: !prev.ttsEnabled }))}
           />
         </div>
