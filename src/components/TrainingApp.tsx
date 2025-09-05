@@ -96,9 +96,11 @@ const TrainingApp: React.FC = () => {
 
     if (state.ttsEnabled && speechSynthesis.current) {
       try {
+        // Cancel any in-flight utterance for sync at low delays
+        speechSynthesis.current.cancel();
         const utterance = new SpeechSynthesisUtterance(String(positionId));
-        utterance.rate = 1.2;
-        utterance.volume = 0.8;
+        utterance.lang = 'en-US';
+        utterance.rate = 1.0;
         speechSynthesis.current.speak(utterance);
       } catch (e) {
         console.warn('TTS failed, using beep fallback');
@@ -126,13 +128,8 @@ const TrainingApp: React.FC = () => {
     oscillator.stop(audioContext.currentTime + 0.3);
   }, []);
 
-  // Uniform position chooser avoiding consecutive repeats
+// Uniform position chooser avoiding consecutive repeats
   const chooseNext = useCallback((allowed: number[], lastId: number | null): number => {
-    if (allowed.length <= 1) {
-      return allowed[0];
-    }
-    
-    // Create pool excluding lastId if possible
     const pool = (allowed.length > 1 && lastId !== null)
       ? allowed.filter(id => id !== lastId)
       : allowed.slice(); // Don't mutate original
@@ -172,22 +169,29 @@ const TrainingApp: React.FC = () => {
     setState(prev => ({
       ...prev,
       running: true,
-      timeRemaining: prev.timerValue
+      timeRemaining: prev.timerValue,
+      lastPosition: null // Reset on start
     }));
     
     // Start first position immediately
     moveToNextPosition();
     
+    // Enforce minimum delay for TTS sync
+    const userDelayMs = state.delay * 1000;
+    const minTtsMs = state.ttsEnabled ? 800 : 0;
+    const effectiveDelay = Math.max(userDelayMs, minTtsMs);
+    
     // Set up interval for subsequent positions
     intervalRef.current = setInterval(() => {
       moveToNextPosition();
-    }, state.delay * 1000);
+    }, effectiveDelay);
     
     // Set up timer countdown if timer is enabled
     if (state.timerValue > 0) {
       timerRef.current = setInterval(() => {
         setState(prev => {
           if (prev.timeRemaining <= 1) {
+            // Timer expired - stop training
             return { ...prev, running: false, timeRemaining: 0 };
           }
           return { ...prev, timeRemaining: prev.timeRemaining - 1 };
@@ -199,7 +203,7 @@ const TrainingApp: React.FC = () => {
       title: "Training Started",
       description: `Mode: ${state.mode.replace('-', ' ')}`,
     });
-  }, [state.delay, state.timerValue, state.mode, moveToNextPosition, toast]);
+  }, [state.delay, state.timerValue, state.mode, state.ttsEnabled, moveToNextPosition, toast]);
 
   // Stop training
   const stopTraining = useCallback(() => {
@@ -215,38 +219,70 @@ const TrainingApp: React.FC = () => {
       timerRef.current = null;
     }
     
+    // Cancel any TTS
+    if (speechSynthesis.current) {
+      speechSynthesis.current.cancel();
+    }
+    
     toast({
       title: "Training Stopped",
       description: `Score: ${state.score}`,
     });
   }, [state.score, toast]);
 
-  // Reset training
-  const resetTraining = useCallback(() => {
-    stopTraining();
-    setState(prev => ({
-      ...prev,
-      score: 0,
-      currentIdx: 0,
-      activePosition: null,
-      lastPosition: null,
-      timeRemaining: prev.timerValue
-    }));
-    
-    toast({
-      title: "Training Reset",
-      description: "Ready to start fresh",
-    });
-  }, [stopTraining, toast]);
+  // Hard Reset - guaranteed kill-switch
+  const hardReset = useCallback(() => {
+    try {
+      // Stop all timers and clear state
+      setState(prev => ({ 
+        ...prev, 
+        running: false, 
+        activePosition: null, 
+        lastPosition: null,
+        score: 0,
+        currentIdx: 0,
+        delay: 3,
+        timerValue: 0,
+        timeRemaining: 0,
+        mode: 'full-court',
+        ttsEnabled: false
+      }));
+      
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      
+      // Cancel any TTS
+      if (speechSynthesis.current) {
+        speechSynthesis.current.cancel();
+      }
+      
+      // Force arrow redraw
+      setArrowRedrawCounter(prev => prev + 1);
+      
+      toast({
+        title: "Training Reset",
+        description: "Ready to start fresh",
+      });
+    } catch (e) {
+      console.warn('Reset error:', e);
+    }
+  }, [toast]);
 
-  // Home function (placeholder)
+  // Home function 
   const goHome = useCallback(() => {
-    resetTraining();
+    hardReset();
     toast({
       title: "Returned Home",
       description: "Training session ended",
     });
-  }, [resetTraining, toast]);
+  }, [hardReset, toast]);
 
   // Handle timer expiry
   useEffect(() => {
@@ -260,7 +296,7 @@ const TrainingApp: React.FC = () => {
     }
   }, [state.timeRemaining, state.running, state.timerValue, state.score, stopTraining, toast]);
 
-  // Keyboard shortcuts
+  // Keyboard shortcuts (removed ArrowRight for Next)
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement) {
@@ -409,7 +445,7 @@ const TrainingApp: React.FC = () => {
             ttsEnabled={state.ttsEnabled}
             onStart={startTraining}
             onStop={stopTraining}
-            onReset={resetTraining}
+            onReset={hardReset}
             onHome={goHome}
             onDelayChange={(delay) => setState(prev => ({ ...prev, delay }))}
             onTimerChange={(timerValue) => setState(prev => ({ ...prev, timerValue, timeRemaining: timerValue }))}

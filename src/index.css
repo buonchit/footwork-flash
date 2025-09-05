@@ -11,16 +11,17 @@
     --background-secondary: 150 70% 6%;
     --foreground: 120 20% 85%;
 
-  /* Court Colors */
+/* Court Colors */
   --court-surface: 120 10% 95%;
   --court-lines: 120 5% 30%;
   --court-active: 120 70% 45%;
   --court-highlight: 45 100% 50%;
   
   /* Position Markers */
-  --court-position: 150 20% 25%;
-  --court-position-border: 120 60% 40%;
-  --court-position-active: 120 70% 45%;
+  --court-marker: 150 20% 25%;
+  --court-marker-border: 120 60% 40%;
+  --court-active: 120 70% 45%;
+  --court-active-border: 45 100% 50%;
 
   /* Training System Colors */
     --primary: 150 60% 15%;
@@ -118,8 +119,8 @@
   }
 
   .court-position {
-    fill: hsl(var(--court-position));
-    stroke: hsl(var(--court-position-border));
+    fill: hsl(var(--court-marker));
+    stroke: hsl(var(--court-marker-border));
     stroke-width: 3;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
@@ -128,10 +129,11 @@
   }
 
   .court-position.active {
-    fill: hsl(var(--court-position-active));
-    stroke: hsl(var(--court-highlight));
+    fill: hsl(var(--court-active));
+    stroke: hsl(var(--court-active-border));
     stroke-width: 4;
     transform: scale(1.18);
+    animation: none;
   }
 
   /* Arrow animation keyframes - dynamic generation for force redraw */
