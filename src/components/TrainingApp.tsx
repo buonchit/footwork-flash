@@ -24,6 +24,7 @@ const MODE_POSITIONS: Record<string, number[]> = {
 
 interface TrainingState {
   running: boolean;
+  starting: boolean; // Prevent re-entry during start handshake
   currentIdx: number;
   score: number;
   delay: number;
@@ -43,6 +44,7 @@ const TrainingApp: React.FC = () => {
     const saved = localStorage.getItem('masterFootworkState');
     const defaultState: TrainingState = {
       running: false,
+      starting: false, // Prevent re-entry during start handshake
       currentIdx: 0,
       score: 0,
       delay: 3,
@@ -71,6 +73,8 @@ const TrainingApp: React.FC = () => {
   const speechSynthesis = useRef<SpeechSynthesis | null>(null);
   const scheduleIdRef = useRef<number>(0);
   const currentRunningRef = useRef<boolean>(false);
+  const watchdogRef = useRef<NodeJS.Timeout | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
 
   // Sync running state with ref for closures
   useEffect(() => {
@@ -96,46 +100,68 @@ const TrainingApp: React.FC = () => {
     return MODE_POSITIONS[state.mode] || MODE_POSITIONS['full-court'];
   }, [state.mode]);
 
-  // Audio feedback with TTS sync
-  const playAudioFeedback = useCallback((positionId: number) => {
-    if (!currentRunningRef.current) return; // Guard: only if running
-    
-    const position = POSITIONS.find(p => p.id === positionId);
-    if (!position) return;
-
-    if (state.ttsEnabled && speechSynthesis.current) {
-      try {
-        // Cancel any in-flight utterance for sync at low delays
-        speechSynthesis.current.cancel();
-        const utterance = new SpeechSynthesisUtterance(String(positionId));
-        utterance.lang = 'en-US';
-        utterance.rate = 1.0;
-        speechSynthesis.current.speak(utterance);
-        console.log(`[TRAINING] TTS: Speaking ${positionId}`);
-      } catch (e) {
-        console.warn('TTS failed, using beep fallback');
-        playBeep();
+  // Prime audio context for user gesture compliance
+  const primeAudioContext = useCallback(async (): Promise<boolean> => {
+    try {
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
       }
-    } else {
-      playBeep();
+      if (audioContextRef.current.state === 'suspended') {
+        await audioContextRef.current.resume();
+      }
+      return audioContextRef.current.state === 'running';
+    } catch (e) {
+      console.warn('[AUDIO] Failed to prime audio context:', e);
+      return false;
+    }
+  }, []);
+
+  // Non-blocking TTS with cancellation
+  const speakNumber = useCallback((positionId: number) => {
+    if (!currentRunningRef.current) return; // Guard: only if running
+    if (!state.ttsEnabled) return;
+    
+    try {
+      if (!speechSynthesis.current) return;
+      
+      // Cancel any prior utterance for sync at low delays
+      speechSynthesis.current.cancel();
+      
+      const utterance = new SpeechSynthesisUtterance(String(positionId));
+      utterance.lang = 'en-US';
+      utterance.rate = 1.0;
+      utterance.volume = 0.8;
+      
+      speechSynthesis.current.speak(utterance);
+      console.log(`[TTS-${scheduleIdRef.current}] Speaking: ${positionId}`);
+    } catch (e) {
+      console.warn('[TTS] Speech failed:', e);
     }
   }, [state.ttsEnabled]);
 
-  // Beep fallback
+  // Fallback beep (non-blocking)
   const playBeep = useCallback(() => {
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
+    if (!currentRunningRef.current) return;
     
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    
-    oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-    
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.3);
+    try {
+      const audioContext = audioContextRef.current;
+      if (!audioContext || audioContext.state !== 'running') return;
+      
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.3);
+    } catch (e) {
+      console.warn('[BEEP] Failed:', e);
+    }
   }, []);
 
 // Uniform position chooser avoiding consecutive repeats
@@ -157,7 +183,7 @@ const TrainingApp: React.FC = () => {
   // Force arrow redraw counter
   const [arrowRedrawCounter, setArrowRedrawCounter] = React.useState(0);
 
-  // Move to next position with guards
+  // Move to next position with comprehensive guards
   const moveToNextPosition = useCallback(() => {
     const scheduleId = scheduleIdRef.current;
     console.log(`[SCHEDULE-${scheduleId}] moveToNextPosition: executing`);
@@ -187,121 +213,228 @@ const TrainingApp: React.FC = () => {
     setArrowRedrawCounter(prev => prev + 1);
     
     console.log(`[SCHEDULE-${scheduleId}] moveToNextPosition: moved to position ${nextPos}`);
-    playAudioFeedback(nextPos);
-  }, [getNextPosition, playAudioFeedback, state.timerValue, state.timeRemaining]);
-
-  // Start training with proper guards and debounce
-  const startTraining = useCallback(() => {
-    console.log('[TRAINING] startTraining: attempting to start');
     
-    // GUARD: Prevent re-entry if already running
-    if (currentRunningRef.current) {
-      console.log('[TRAINING] startTraining: aborted - already running');
+    // Non-blocking audio feedback
+    speakNumber(nextPos);
+    if (!state.ttsEnabled) {
+      playBeep();
+    }
+  }, [getNextPosition, speakNumber, playBeep, state.ttsEnabled, state.timerValue, state.timeRemaining]);
+
+  // Start preconditions check
+  const checkStartPreconditions = useCallback((): { canStart: boolean; reason?: string } => {
+    // Check if mode has valid positions
+    const modePositions = getCurrentModePositions();
+    if (modePositions.length === 0) {
+      return { canStart: false, reason: "Mode has no valid positions" };
+    }
+    
+    // Check if already starting/running
+    if (state.starting || currentRunningRef.current) {
+      return { canStart: false, reason: "Session already active" };
+    }
+    
+    // Check timer conditions
+    if (state.timerValue > 0 && state.timeRemaining === 0) {
+      return { canStart: false, reason: "Timer is set but no time remaining. Please reset timer." };
+    }
+    
+    return { canStart: true };
+  }, [getCurrentModePositions, state.starting, state.timerValue, state.timeRemaining]);
+
+  // Start watchdog - ensures first move happens within 700ms
+  const startWatchdog = useCallback(() => {
+    if (watchdogRef.current) {
+      clearTimeout(watchdogRef.current);
+    }
+    
+    watchdogRef.current = setTimeout(() => {
+      console.log('[WATCHDOG] Checking start completion...');
+      
+      // Check if session started successfully
+      if (currentRunningRef.current && state.activePosition) {
+        console.log('[WATCHDOG] Start successful - disabling');
+        return;
+      }
+      
+      // Check if session was explicitly stopped
+      if (!currentRunningRef.current) {
+        console.log('[WATCHDOG] Session stopped - no action needed');
+        return;
+      }
+      
+      // Recovery: trigger first move if still running but no position active
+      if (currentRunningRef.current && !state.activePosition) {
+        console.log('[WATCHDOG] Recovery: triggering first move');
+        moveToNextPosition();
+      }
+      
+      watchdogRef.current = null;
+    }, 700);
+  }, [state.activePosition, moveToNextPosition]);
+
+  // Comprehensive start training with ordered handshake
+  const startTraining = useCallback(async () => {
+    console.log('[TRAINING] startTraining: entering handshake');
+    
+    // REQ-INT-2: Start preconditions check
+    const { canStart, reason } = checkStartPreconditions();
+    if (!canStart) {
+      console.log(`[TRAINING] startTraining: preconditions failed - ${reason}`);
+      toast({
+        title: "Cannot Start",
+        description: reason,
+        variant: "destructive"
+      });
       return;
     }
     
-    // Increment schedule ID for this session
-    scheduleIdRef.current += 1;
-    const scheduleId = scheduleIdRef.current;
-    console.log(`[TRAINING] startTraining: starting session ${scheduleId}`);
-    
-    // Set running state
-    currentRunningRef.current = true;
-    setState(prev => ({
-      ...prev,
-      running: true,
-      timeRemaining: prev.timerValue,
-      lastPosition: null, // Reset on start
-      activePosition: null
-    }));
-    
-    // Start first position immediately
-    console.log(`[SCHEDULE-${scheduleId}] startTraining: scheduling first move`);
-    moveToNextPosition();
-    
-    // Enforce minimum delay for TTS sync
-    const userDelayMs = state.delay * 1000;
-    const minTtsMs = state.ttsEnabled ? 800 : 0;
-    const effectiveDelay = Math.max(userDelayMs, minTtsMs);
-    
-    // Set up interval for subsequent positions with guards
-    console.log(`[SCHEDULE-${scheduleId}] startTraining: setting interval with ${effectiveDelay}ms delay`);
-    intervalRef.current = setInterval(() => {
-      // RECHECK guards before each scheduled move
-      if (!currentRunningRef.current) {
-        console.log(`[SCHEDULE-${scheduleId}] interval: aborted - not running`);
-        return;
-      }
-      if (state.timerValue > 0 && state.timeRemaining <= 0) {
-        console.log(`[SCHEDULE-${scheduleId}] interval: aborted - timer expired`);
-        return;
-      }
-      moveToNextPosition();
-    }, effectiveDelay);
-    
-    // Set up timer countdown if timer is enabled
-    if (state.timerValue > 0) {
-      console.log(`[TRAINING] startTraining: starting ${state.timerValue}s countdown`);
-      timerRef.current = setInterval(() => {
-        setState(prev => {
-          const newTimeRemaining = prev.timeRemaining - 1;
-          console.log(`[TIMER] countdown tick: ${newTimeRemaining}s remaining`);
-          
-          if (newTimeRemaining <= 0) {
-            console.log('[TIMER] countdown: reached 00:00 - triggering stop');
-            // Timer expired - trigger centralized stop
-            setTimeout(() => {
-              currentRunningRef.current = false;
-              setState(prevState => ({ 
-                ...prevState, 
-                running: false, 
-                activePosition: null, 
-                timeRemaining: 0 
-              }));
-              // Clear intervals
-              if (intervalRef.current) {
-                clearInterval(intervalRef.current);
-                intervalRef.current = null;
-              }
-              if (timerRef.current) {
-                clearInterval(timerRef.current);
-                timerRef.current = null;
-              }
-              // Cancel TTS
-              if (speechSynthesis.current) {
-                speechSynthesis.current.cancel();
-              }
-              console.log('[TRAINING] Timer expired - training stopped');
-            }, 0);
-            return { ...prev, timeRemaining: 0 };
-          }
-          return { ...prev, timeRemaining: newTimeRemaining };
-        });
-      }, 1000);
-    }
-    
-    toast({
-      title: "Training Started",
-      description: `Mode: ${state.mode.replace('-', ' ')}`,
-    });
-  }, [state.delay, state.timerValue, state.mode, state.ttsEnabled, moveToNextPosition, toast]);
-
-  // Centralized, idempotent stop procedure
-  const stopTraining = useCallback(() => {
-    console.log('[TRAINING] stopTraining: entering stop procedure');
-    
     try {
-      // 1) Set running=false FIRST (single source of truth)
+      // REQ-INT-3: Ordered start handshake (atomic)
+      // (a) Mark session as starting and prevent re-entry
+      setState(prev => ({ ...prev, starting: true }));
+      
+      // (b) Clear any prior timers/intervals/animation frames and cancel any pending speech
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      if (watchdogRef.current) {
+        clearTimeout(watchdogRef.current);
+        watchdogRef.current = null;
+      }
+      if (speechSynthesis.current) {
+        speechSynthesis.current.cancel();
+      }
+      
+      // Increment schedule ID for this session
+      scheduleIdRef.current += 1;
+      const scheduleId = scheduleIdRef.current;
+      console.log(`[TRAINING] startTraining: session ${scheduleId} starting`);
+      
+      // (c) Reset "last pick"/selection memory and timer remaining
+      setState(prev => ({
+        ...prev,
+        timeRemaining: prev.timerValue,
+        lastPosition: null,
+        activePosition: null,
+        currentIdx: 0
+      }));
+      
+      // (d) Set running=true
+      currentRunningRef.current = true;
+      setState(prev => ({ ...prev, running: true }));
+      
+      // (e) Prime audio/TTS opportunistically (non-blocking)
+      const audioReady = await primeAudioContext();
+      console.log(`[TRAINING] Audio context ready: ${audioReady}`);
+      
+      // Clear starting flag
+      setState(prev => ({ ...prev, starting: false }));
+      
+      // (f) Trigger first move immediately (REQ-INT-4: First-Move Guarantee)
+      console.log(`[SCHEDULE-${scheduleId}] startTraining: triggering first move`);
+      
+      // Use setTimeout to ensure move happens within 300-500ms
+      setTimeout(() => {
+        if (currentRunningRef.current) {
+          moveToNextPosition();
+        }
+      }, 100);
+      
+      // REQ-INT-8: Start watchdog
+      startWatchdog();
+      
+      // Enforce minimum delay for TTS sync (REQ-INT-5)
+      const userDelayMs = state.delay * 1000;
+      const minTtsMs = state.ttsEnabled ? 800 : 0;
+      const effectiveDelay = Math.max(userDelayMs, minTtsMs);
+      
+      // Set up interval for subsequent positions with comprehensive guards
+      console.log(`[SCHEDULE-${scheduleId}] startTraining: setting interval with ${effectiveDelay}ms delay`);
+      intervalRef.current = setInterval(() => {
+        // REQ-INT-7: Scheduling barriers & race-free guards
+        if (!currentRunningRef.current) {
+          console.log(`[SCHEDULE-${scheduleId}] interval: aborted - not running`);
+          return;
+        }
+        if (state.timerValue > 0 && state.timeRemaining <= 0) {
+          console.log(`[SCHEDULE-${scheduleId}] interval: aborted - timer expired`);
+          return;
+        }
+        moveToNextPosition();
+      }, effectiveDelay);
+      
+      // REQ-INT-6: Timer guardrails
+      if (state.timerValue > 0) {
+        console.log(`[TRAINING] startTraining: starting ${state.timerValue}s countdown`);
+        timerRef.current = setInterval(() => {
+          setState(prev => {
+            const newTimeRemaining = prev.timeRemaining - 1;
+            console.log(`[TIMER] countdown tick: ${newTimeRemaining}s remaining`);
+            
+            if (newTimeRemaining <= 0) {
+              console.log('[TIMER] countdown: reached 00:00 - triggering stop');
+              // Timer expired - trigger centralized stop with proper sequence
+              setTimeout(() => {
+                if (currentRunningRef.current) {
+                  stopTraining();
+                }
+              }, 0);
+              return { ...prev, timeRemaining: 0 };
+            }
+            return { ...prev, timeRemaining: newTimeRemaining };
+          });
+        }, 1000);
+      }
+      
+      toast({
+        title: "Training Started",
+        description: `Mode: ${state.mode.replace('-', ' ')}`,
+      });
+      
+    } catch (error) {
+      console.error('[TRAINING] startTraining: error during handshake', error);
+      
+      // Abort cleanly on failure
       currentRunningRef.current = false;
       setState(prev => ({ 
         ...prev, 
         running: false, 
+        starting: false,
+        activePosition: null 
+      }));
+      
+      toast({
+        title: "Start Failed",
+        description: "Unable to start training session",
+        variant: "destructive"
+      });
+    }
+  }, [checkStartPreconditions, primeAudioContext, state.delay, state.timerValue, 
+      state.ttsEnabled, state.mode, moveToNextPosition, startWatchdog, toast]);
+
+  // REQ-INT-10: Centralized, idempotent stop procedure
+  const stopTraining = useCallback(() => {
+    console.log('[TRAINING] stopTraining: entering stop procedure');
+    
+    try {
+      // REQ-INT-1: Single source of truth - set running=false FIRST
+      currentRunningRef.current = false;
+      setState(prev => ({ 
+        ...prev, 
+        running: false, 
+        starting: false,
         activePosition: null, 
         timeRemaining: 0 
       }));
       console.log('[TRAINING] stopTraining: set running=false');
       
-      // 2) Cancel ALL scheduled callbacks
+      // Cancel ALL scheduled callbacks (idempotent)
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
@@ -314,20 +447,23 @@ const TrainingApp: React.FC = () => {
         console.log('[TRAINING] stopTraining: cleared timer interval');
       }
       
-      // 3) Cancel any TTS
+      if (watchdogRef.current) {
+        clearTimeout(watchdogRef.current);
+        watchdogRef.current = null;
+        console.log('[TRAINING] stopTraining: cleared watchdog');
+      }
+      
+      // Cancel any TTS (idempotent)
       if (speechSynthesis.current) {
         speechSynthesis.current.cancel();
         console.log('[TRAINING] stopTraining: cancelled TTS');
       }
       
-      // 4) Zero countdown state (already done in setState above)
-      
-      // 5) UI updates happen automatically via state change
       console.log('[TRAINING] stopTraining: stop procedure complete');
       
       toast({
         title: "Training Stopped", 
-        description: `Score: ${currentRunningRef.current ? state.score : 'Session ended'}`,
+        description: `Score: ${state.score}`,
       });
       
     } catch (e) {
@@ -335,7 +471,7 @@ const TrainingApp: React.FC = () => {
     }
   }, [state.score, toast]);
 
-  // Hard Reset - guaranteed kill-switch
+  // REQ-INT-10: Hard Reset - guaranteed kill-switch
   const hardReset = useCallback(() => {
     console.log('[TRAINING] hardReset: entering kill-switch reset');
     
@@ -343,7 +479,7 @@ const TrainingApp: React.FC = () => {
       // Force running state to false
       currentRunningRef.current = false;
       
-      // Clear ALL timers and intervals
+      // Clear ALL timers, intervals, and timeouts (idempotent)
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
@@ -356,6 +492,12 @@ const TrainingApp: React.FC = () => {
         console.log('[TRAINING] hardReset: cleared timer interval');
       }
       
+      if (watchdogRef.current) {
+        clearTimeout(watchdogRef.current);
+        watchdogRef.current = null;
+        console.log('[TRAINING] hardReset: cleared watchdog');
+      }
+      
       // Cancel any TTS
       if (speechSynthesis.current) {
         speechSynthesis.current.cancel();
@@ -365,6 +507,7 @@ const TrainingApp: React.FC = () => {
       // Reset all state to defaults
       setState({
         running: false,
+        starting: false, // Reset start handshake state
         currentIdx: 0,
         score: 0,
         delay: 3,
@@ -430,14 +573,17 @@ const TrainingApp: React.FC = () => {
           event.preventDefault();
           const pos = parseInt(event.code.slice(-1));
           setState(prev => ({ ...prev, activePosition: pos }));
-          playAudioFeedback(pos);
+          speakNumber(pos);
+          if (!state.ttsEnabled) {
+            playBeep();
+          }
           break;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [state.running, startTraining, stopTraining, playAudioFeedback]);
+  }, [state.running, state.ttsEnabled, startTraining, stopTraining, speakNumber, playBeep]);
 
   // Touch/swipe gestures
   useEffect(() => {
