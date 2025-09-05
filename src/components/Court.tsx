@@ -145,14 +145,20 @@ const Court: React.FC<CourtProps> = ({ activePosition, arrowPosition }) => {
             <circle
               cx={position.x}
               cy={position.y}
-              r="12"
+              r="24"
               className={`court-position ${activePosition === position.id ? 'active' : ''}`}
             />
             <text
               x={position.x}
-              y={position.y + 4}
+              y={position.y + 6}
               textAnchor="middle"
-              className="text-xs font-bold fill-court-lines select-none"
+              className="text-lg font-bold select-none"
+              style={{
+                fill: 'white',
+                paintOrder: 'stroke',
+                stroke: 'rgba(0,0,0,0.45)',
+                strokeWidth: '1px'
+              }}
               aria-label={position.label}
             >
               {position.id}

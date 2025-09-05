@@ -20,22 +20,21 @@ interface TrainingControlsProps {
 }
 
 const TRAINING_MODES = [
-  'random1-8',
-  'random1-3-5-7',
-  'random2-4-6-8',
-  'random1-2-3',
-  'random4-5-6',
-  'random7-8-1',
-  'random1-4-7',
-  'random2-5-8',
-  'random3-6-1',
-  'corners',
+  'full-court',
   'front-court',
   'back-court',
+  'corners',
   'left-side',
   'right-side',
-  'challenge',
-  'custom'
+  'random-1-2-3-4-8',
+  'random-4-5-6-7-8',
+  'random-4-8',
+  'random-2-4-6-8',
+  'random-1-5',
+  'random-2-6',
+  'random-3-7',
+  'random-5-7',
+  'random-1-3-6'
 ];
 
 const TrainingControls: React.FC<TrainingControlsProps> = ({

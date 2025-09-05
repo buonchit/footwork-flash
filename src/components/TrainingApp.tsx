@@ -5,22 +5,21 @@ import { useToast } from '../hooks/use-toast';
 
 // Mode position mappings
 const MODE_POSITIONS: Record<string, number[]> = {
-  'random1-8': [1, 2, 3, 4, 5, 6, 7, 8],
-  'random1-3-5-7': [1, 3, 5, 7],
-  'random2-4-6-8': [2, 4, 6, 8],
-  'random1-2-3': [1, 2, 3],
-  'random4-5-6': [4, 5, 6],
-  'random7-8-1': [7, 8, 1],
-  'random1-4-7': [1, 4, 7],
-  'random2-5-8': [2, 5, 8],
-  'random3-6-1': [3, 6, 1],
-  'corners': [1, 3, 5, 7],
+  'full-court': [1, 2, 3, 4, 5, 6, 7, 8],
   'front-court': [1, 2, 3],
   'back-court': [5, 6, 7],
+  'corners': [1, 3, 5, 7],
   'left-side': [1, 7, 8],
   'right-side': [3, 4, 5],
-  'challenge': [1, 2, 3, 4, 5, 6, 7, 8],
-  'custom': [1, 2, 3, 4, 5, 6, 7, 8]
+  'random-1-2-3-4-8': [1, 2, 3, 4, 8],
+  'random-4-5-6-7-8': [4, 5, 6, 7, 8],
+  'random-4-8': [4, 8],
+  'random-2-4-6-8': [2, 4, 6, 8],
+  'random-1-5': [1, 5],
+  'random-2-6': [2, 6],
+  'random-3-7': [3, 7],
+  'random-5-7': [5, 7],
+  'random-1-3-6': [1, 3, 6]
 };
 
 interface TrainingState {
@@ -33,6 +32,7 @@ interface TrainingState {
   mode: string;
   ttsEnabled: boolean;
   activePosition: number | null;
+  lastPosition: number | null;
 }
 
 const TrainingApp: React.FC = () => {
@@ -48,9 +48,10 @@ const TrainingApp: React.FC = () => {
       delay: 3,
       timerValue: 300, // 5 minutes default
       timeRemaining: 0,
-      mode: 'random1-8',
+      mode: 'full-court',
       ttsEnabled: false,
-      activePosition: null
+      activePosition: null,
+      lastPosition: null
     };
     
     if (saved) {
@@ -85,7 +86,7 @@ const TrainingApp: React.FC = () => {
 
   // Get current mode positions
   const getCurrentModePositions = useCallback((): number[] => {
-    return MODE_POSITIONS[state.mode] || MODE_POSITIONS['random1-8'];
+    return MODE_POSITIONS[state.mode] || MODE_POSITIONS['full-court'];
   }, [state.mode]);
 
   // Audio feedback
@@ -95,7 +96,7 @@ const TrainingApp: React.FC = () => {
 
     if (state.ttsEnabled && speechSynthesis.current) {
       try {
-        const utterance = new SpeechSynthesisUtterance(`Position ${positionId}`);
+        const utterance = new SpeechSynthesisUtterance(String(positionId));
         utterance.rate = 1.2;
         utterance.volume = 0.8;
         speechSynthesis.current.speak(utterance);
@@ -125,12 +126,21 @@ const TrainingApp: React.FC = () => {
     oscillator.stop(audioContext.currentTime + 0.3);
   }, []);
 
-  // Get next position
+  // Get next position avoiding consecutive repeats
   const getNextPosition = useCallback((): number => {
     const modePositions = getCurrentModePositions();
-    const randomIndex = Math.floor(Math.random() * modePositions.length);
-    return modePositions[randomIndex];
-  }, [getCurrentModePositions]);
+    if (modePositions.length <= 1) {
+      return modePositions[0];
+    }
+    
+    let nextPos;
+    do {
+      const randomIndex = Math.floor(Math.random() * modePositions.length);
+      nextPos = modePositions[randomIndex];
+    } while (nextPos === state.lastPosition);
+    
+    return nextPos;
+  }, [getCurrentModePositions, state.lastPosition]);
 
   // Move to next position
   const moveToNextPosition = useCallback(() => {
@@ -138,12 +148,32 @@ const TrainingApp: React.FC = () => {
     setState(prev => ({
       ...prev,
       activePosition: nextPos,
+      lastPosition: nextPos,
       currentIdx: prev.currentIdx + 1,
       score: prev.score + 1
     }));
     
     playAudioFeedback(nextPos);
   }, [getNextPosition, playAudioFeedback]);
+
+  // Trigger next position manually and reschedule
+  const triggerNext = useCallback(() => {
+    if (!state.running) return;
+    
+    // Clear current interval
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    
+    // Move to next position
+    moveToNextPosition();
+    
+    // Restart the interval
+    intervalRef.current = setInterval(() => {
+      moveToNextPosition();
+    }, state.delay * 1000);
+  }, [state.running, state.delay, moveToNextPosition]);
 
   // Start training
   const startTraining = useCallback(() => {
@@ -207,6 +237,7 @@ const TrainingApp: React.FC = () => {
       score: 0,
       currentIdx: 0,
       activePosition: null,
+      lastPosition: null,
       timeRemaining: prev.timerValue
     }));
     
@@ -216,12 +247,10 @@ const TrainingApp: React.FC = () => {
     });
   }, [stopTraining, toast]);
 
-  // Next position manually
+  // Next position manually (legacy function for compatibility)
   const nextPosition = useCallback(() => {
-    if (state.running) {
-      moveToNextPosition();
-    }
-  }, [state.running, moveToNextPosition]);
+    triggerNext();
+  }, [triggerNext]);
 
   // Home function (placeholder)
   const goHome = useCallback(() => {
@@ -262,7 +291,7 @@ const TrainingApp: React.FC = () => {
           break;
         case 'ArrowRight':
           event.preventDefault();
-          nextPosition();
+          triggerNext();
           break;
         case 'Digit1':
         case 'Digit2':
@@ -357,12 +386,28 @@ const TrainingApp: React.FC = () => {
       </header>
 
       {/* Court */}
-      <main className="flex-1 flex items-center justify-center px-4 slide-up">
+      <main className="flex-1 flex items-center justify-center px-4 slide-up relative">
         <Court
           positions={POSITIONS}
           activePosition={state.activePosition}
           arrowPosition={getArrowPosition()}
         />
+        
+        {/* Centered Stop Overlay */}
+        {state.running && (
+          <button
+            id="stopOverlayBtn"
+            onClick={stopTraining}
+            className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 
+                       bg-red-600 hover:bg-red-700 text-white font-bold 
+                       w-24 h-24 rounded-full shadow-lg z-10 
+                       flex items-center justify-center text-lg
+                       transition-colors duration-200"
+            aria-label="Stop Training"
+          >
+            STOP
+          </button>
+        )}
       </main>
 
       {/* Controls */}
