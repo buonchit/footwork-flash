@@ -11,13 +11,18 @@
     --background-secondary: 150 70% 6%;
     --foreground: 120 20% 85%;
 
-    /* Court Colors */
-    --court-surface: 120 10% 95%;
-    --court-lines: 120 5% 30%;
-    --court-active: 120 70% 45%;
-    --court-highlight: 45 100% 50%;
+  /* Court Colors */
+  --court-surface: 120 10% 95%;
+  --court-lines: 120 5% 30%;
+  --court-active: 120 70% 45%;
+  --court-highlight: 45 100% 50%;
+  
+  /* Position Markers */
+  --court-position: 150 20% 25%;
+  --court-position-border: 120 60% 40%;
+  --court-position-active: 120 70% 45%;
 
-    /* Training System Colors */
+  /* Training System Colors */
     --primary: 150 60% 15%;
     --primary-foreground: 120 20% 95%;
     --primary-hover: 150 65% 18%;
@@ -113,15 +118,33 @@
   }
 
   .court-position {
-    @apply absolute w-6 h-6 rounded-full border-2 transition-all duration-300;
-    @apply border-green-500 bg-slate-700;
+    fill: hsl(var(--court-position));
+    stroke: hsl(var(--court-position-border));
+    stroke-width: 3;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    transform-box: fill-box;
+    transform-origin: 50% 50%;
   }
 
   .court-position.active {
-    @apply border-green-400 bg-green-600 scale-125;
-    box-shadow: var(--shadow-glow);
-    animation: boom 0.45s ease-out;
+    fill: hsl(var(--court-position-active));
+    stroke: hsl(var(--court-highlight));
+    stroke-width: 4;
+    transform: scale(1.18);
   }
+
+  /* Arrow animation keyframes - dynamic generation for force redraw */
+  @keyframes arrow-draw-0 { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
+  @keyframes arrow-draw-1 { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
+  @keyframes arrow-draw-2 { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
+  @keyframes arrow-draw-3 { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
+  @keyframes arrow-draw-4 { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
+  @keyframes arrow-draw-5 { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
+  @keyframes arrow-draw-6 { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
+  @keyframes arrow-draw-7 { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
+  @keyframes arrow-draw-8 { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
+  @keyframes arrow-draw-9 { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
 
   .arrow-pointer {
     @apply transition-all;

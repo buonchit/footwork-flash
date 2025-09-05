@@ -132,13 +132,13 @@ const TrainingApp: React.FC = () => {
       return allowed[0];
     }
     
-    let nextPos;
-    do {
-      const randomIndex = Math.floor(Math.random() * allowed.length);
-      nextPos = allowed[randomIndex];
-    } while (nextPos === lastId && allowed.length > 1);
+    // Create pool excluding lastId if possible
+    const pool = (allowed.length > 1 && lastId !== null)
+      ? allowed.filter(id => id !== lastId)
+      : allowed.slice(); // Don't mutate original
     
-    return nextPos;
+    const idx = Math.floor(Math.random() * pool.length);
+    return pool[idx];
   }, []);
 
   // Get next position using uniform chooser
@@ -146,6 +146,9 @@ const TrainingApp: React.FC = () => {
     const modePositions = getCurrentModePositions();
     return chooseNext(modePositions, state.lastPosition);
   }, [getCurrentModePositions, state.lastPosition, chooseNext]);
+
+  // Force arrow redraw counter
+  const [arrowRedrawCounter, setArrowRedrawCounter] = React.useState(0);
 
   // Move to next position
   const moveToNextPosition = useCallback(() => {
@@ -158,27 +161,11 @@ const TrainingApp: React.FC = () => {
       score: prev.score + 1
     }));
     
+    // Force arrow redraw for every position change
+    setArrowRedrawCounter(prev => prev + 1);
+    
     playAudioFeedback(nextPos);
   }, [getNextPosition, playAudioFeedback]);
-
-  // Trigger next position manually and reschedule
-  const triggerNext = useCallback(() => {
-    if (!state.running) return;
-    
-    // Clear current interval
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-    
-    // Move to next position
-    moveToNextPosition();
-    
-    // Restart the interval
-    intervalRef.current = setInterval(() => {
-      moveToNextPosition();
-    }, state.delay * 1000);
-  }, [state.running, state.delay, moveToNextPosition]);
 
   // Start training
   const startTraining = useCallback(() => {
@@ -251,7 +238,6 @@ const TrainingApp: React.FC = () => {
       description: "Ready to start fresh",
     });
   }, [stopTraining, toast]);
-
 
   // Home function (placeholder)
   const goHome = useCallback(() => {
@@ -387,6 +373,7 @@ const TrainingApp: React.FC = () => {
           positions={POSITIONS}
           activePosition={state.activePosition}
           arrowPosition={getArrowPosition()}
+          forceArrowRedraw={arrowRedrawCounter}
         />
         
         {/* Centered Stop Overlay */}
@@ -397,15 +384,14 @@ const TrainingApp: React.FC = () => {
             className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 
                        bg-red-600 hover:bg-red-700 text-white font-bold 
                        w-28 h-28 rounded-full shadow-lg z-10 
-                       flex flex-col items-center justify-center text-sm
+                       flex items-center justify-center text-sm
                        transition-colors duration-200"
             aria-label="Stop Training"
           >
-            <span>STOP</span>
-            {state.timerValue > 0 && state.timeRemaining > 0 && (
-              <span className="text-xs mt-1">
-                ({Math.floor(state.timeRemaining / 60)}:{(state.timeRemaining % 60).toString().padStart(2, '0')})
-              </span>
+            {state.timerValue > 0 && state.timeRemaining > 0 ? (
+              <span>STOP ({Math.floor(state.timeRemaining / 60)}:{(state.timeRemaining % 60).toString().padStart(2, '0')})</span>
+            ) : (
+              <span>STOP</span>
             )}
           </button>
         )}

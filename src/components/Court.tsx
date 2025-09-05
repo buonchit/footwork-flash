@@ -11,21 +11,23 @@ interface CourtProps {
   positions: Position[];
   activePosition: number | null;
   arrowPosition: { x: number; y: number } | null;
+  forceArrowRedraw?: number; // Add counter to force arrow redraw
 }
 
 const POSITIONS: Position[] = [
-  { id: 1, x: 56, y: 70, label: "Front left corner (near net)" },
-  { id: 2, x: 305, y: 68, label: "Front center (near net)" },
-  { id: 3, x: 554, y: 70, label: "Front right corner (near net)" },
-  { id: 4, x: 552, y: 350, label: "Right mid-court" },
-  { id: 5, x: 554, y: 629, label: "Back right corner" },
-  { id: 6, x: 305, y: 629, label: "Back center" },
-  { id: 7, x: 56, y: 629, label: "Back left corner" },
-  { id: 8, x: 58, y: 350, label: "Left mid-court" }
+  { id: 1, x: 56, y: 62, label: "Front left corner (near net)" },
+  { id: 2, x: 305, y: 60, label: "Front center (near net)" },
+  { id: 3, x: 554, y: 62, label: "Front right corner (near net)" },
+  { id: 4, x: 552, y: 342, label: "Right mid-court" },
+  { id: 5, x: 554, y: 621, label: "Back right corner" },
+  { id: 6, x: 305, y: 621, label: "Back center" },
+  { id: 7, x: 56, y: 621, label: "Back left corner" },
+  { id: 8, x: 58, y: 342, label: "Left mid-court" }
 ];
 
-const Court: React.FC<CourtProps> = ({ activePosition, arrowPosition }) => {
+const Court: React.FC<CourtProps> = ({ activePosition, arrowPosition, forceArrowRedraw = 0 }) => {
   const centerPosition = { x: 305, y: 360 };
+  const arrowPathRef = React.useRef<SVGPathElement>(null);
 
   return (
     <div className="court-container w-full max-w-[610px] mx-auto p-6">
@@ -184,14 +186,18 @@ const Court: React.FC<CourtProps> = ({ activePosition, arrowPosition }) => {
                 />
               </marker>
             </defs>
-            <line
-              x1={centerPosition.x}
-              y1={centerPosition.y}
-              x2={arrowPosition.x}
-              y2={arrowPosition.y}
+            <path
+              ref={arrowPathRef}
+              d={`M ${centerPosition.x} ${centerPosition.y} L ${arrowPosition.x} ${arrowPosition.y}`}
               stroke="hsl(var(--court-highlight))"
               strokeWidth="4"
+              fill="none"
               markerEnd="url(#arrowhead)"
+              style={{
+                strokeDasharray: '100',
+                strokeDashoffset: '100',
+                animation: `arrow-draw-${forceArrowRedraw} 0.45s linear forwards`
+              }}
             />
             <circle
               cx={centerPosition.x}
