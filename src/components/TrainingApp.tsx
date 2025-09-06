@@ -35,6 +35,7 @@ interface TrainingState {
   activePosition: number | null;
   lastPosition: number | null;
   controlsLocked: boolean; // REQ-09: Lock controls while running
+  positionCounts: Record<number, number>; // Fair randomization: track selection counts
 }
 
 const TrainingApp: React.FC = () => {
@@ -55,7 +56,8 @@ const TrainingApp: React.FC = () => {
       ttsEnabled: false,
       activePosition: null,
       lastPosition: null,
-      controlsLocked: true // REQ-09: Default to locked during training
+      controlsLocked: true, // REQ-09: Default to locked during training
+      positionCounts: {} // Fair randomization: initialize empty counts
     };
     
     if (saved) {
@@ -169,21 +171,32 @@ const TrainingApp: React.FC = () => {
     }
   }, []);
 
-  // REQ-04: Uniform randomization avoiding consecutive repeats only
-  const chooseNext = useCallback((allowed: number[], lastId: number | null): number => {
-    const pool = (allowed.length > 1 && lastId !== null)
-      ? allowed.filter(id => id !== lastId)
-      : allowed.slice(); // Don't mutate original
+  // Fair randomization: choose position with minimum count, avoid consecutive repeats
+  const chooseNext = useCallback((allowed: number[], lastId: number | null, counts: Record<number, number>): number => {
+    // Find minimum count among allowed positions
+    const minCount = Math.min(...allowed.map(pos => counts[pos] || 0));
     
-    const idx = Math.floor(Math.random() * pool.length);
-    return pool[idx];
+    // Build candidate list of positions with minimum count
+    let candidates = allowed.filter(pos => (counts[pos] || 0) === minCount);
+    
+    // Avoid consecutive repeats if possible (don't mutate original)
+    if (candidates.length > 1 && lastId !== null && candidates.includes(lastId)) {
+      const nonRepeatCandidates = candidates.filter(id => id !== lastId);
+      if (nonRepeatCandidates.length > 0) {
+        candidates = nonRepeatCandidates;
+      }
+    }
+    
+    // Random selection from fair candidates
+    const idx = Math.floor(Math.random() * candidates.length);
+    return candidates[idx];
   }, []);
 
-  // REQ-04: Get next position using uniform chooser
+  // Fair randomization: get next position using fair chooser and update counts
   const getNextPosition = useCallback((): number => {
     const modePositions = getCurrentModePositions();
-    return chooseNext(modePositions, state.lastPosition);
-  }, [getCurrentModePositions, state.lastPosition, chooseNext]);
+    return chooseNext(modePositions, state.lastPosition, state.positionCounts);
+  }, [getCurrentModePositions, state.lastPosition, state.positionCounts, chooseNext]);
 
   // REQ-05: Force arrow redraw counter for repeat animations
   const [arrowRedrawCounter, setArrowRedrawCounter] = React.useState(0);
@@ -281,7 +294,12 @@ const TrainingApp: React.FC = () => {
       activePosition: nextPos,
       lastPosition: nextPos,
       currentIdx: prev.currentIdx + 1,
-      score: prev.score + 1
+      score: prev.score + 1,
+      // Fair randomization: increment count for selected position
+      positionCounts: {
+        ...prev.positionCounts,
+        [nextPos]: (prev.positionCounts[nextPos] || 0) + 1
+      }
     }));
     
     // REQ-05: Force arrow redraw for every position change
@@ -402,7 +420,8 @@ const TrainingApp: React.FC = () => {
         lastPosition: null,
         activePosition: null,
         currentIdx: 0,
-        score: 0
+        score: 0,
+        positionCounts: {} // Fair randomization: reset counts on session start
       }));
       
       // (d) Set running=true and lock controls
@@ -572,7 +591,8 @@ const TrainingApp: React.FC = () => {
         ttsEnabled: false,
         activePosition: null,
         lastPosition: null,
-        controlsLocked: false
+        controlsLocked: false,
+        positionCounts: {} // Fair randomization: reset counts on hard reset
       });
       
       // Reset schedule counter
@@ -638,7 +658,8 @@ const TrainingApp: React.FC = () => {
     setState(prev => ({ 
       ...prev, 
       mode: newMode,
-      lastPosition: null // REQ-04: Reset last position on mode change
+      lastPosition: null, // REQ-04: Reset last position on mode change
+      positionCounts: {} // Fair randomization: reset counts on mode change
     }));
   }, []);
 
