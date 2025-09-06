@@ -78,6 +78,7 @@ const TrainingApp: React.FC = () => {
   const watchdogRef = useRef<NodeJS.Timeout | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const nextMoveTimeoutRef = useRef<NodeJS.Timeout | null>(null); // REQ-01: Single scheduler
+  const sessionStartTimeRef = useRef<number>(0); // Track actual session start time
 
   // REQ-01: Sync running state with ref for closures
   useEffect(() => {
@@ -193,6 +194,7 @@ const TrainingApp: React.FC = () => {
     try {
       // REQ-03: Single source of truth - set running=false FIRST, unlock controls
       currentRunningRef.current = false;
+      sessionStartTimeRef.current = 0; // Clear session start time
       setState(prev => ({ 
         ...prev, 
         running: false, 
@@ -246,10 +248,19 @@ const TrainingApp: React.FC = () => {
     }
   }, [state.score, toast]);
 
-  // REQ-02: Move to next position with comprehensive guards
+  // REQ-Z1: Move to next position with zero-th move prevention
   const moveToNextPosition = useCallback(() => {
     const scheduleId = scheduleIdRef.current;
-    console.log(`[SCHEDULE-${scheduleId}] moveToNextPosition: executing`);
+    const now = Date.now();
+    const elapsed = sessionStartTimeRef.current > 0 ? now - sessionStartTimeRef.current : 0;
+    
+    console.log(`[SCHEDULE-${scheduleId}] moveToNextPosition: executing at t=${elapsed}ms`);
+    
+    // REQ-Z1: CRITICAL - Prevent zero-th move (no move before 700ms after session start)
+    if (elapsed < 700) {
+      console.error(`[SCHEDULE-${scheduleId}] ERROR: Zero-th move detected at t=${elapsed}ms - BLOCKED`);
+      return;
+    }
     
     // GUARD: Check running state and timer before executing
     if (!currentRunningRef.current) {
@@ -378,10 +389,11 @@ const TrainingApp: React.FC = () => {
         speechSynthesis.current.cancel();
       }
       
-      // Increment schedule ID for this session
+      // Increment schedule ID for this session and record start time
       scheduleIdRef.current += 1;
       const scheduleId = scheduleIdRef.current;
-      console.log(`[TRAINING] startTraining: session ${scheduleId} starting`);
+      sessionStartTimeRef.current = Date.now(); // REQ-Z1: Record session start time
+      console.log(`[TRAINING] startTraining: session ${scheduleId} starting at t=0`);
       
       // (c) Reset state
       setState(prev => ({
@@ -404,28 +416,35 @@ const TrainingApp: React.FC = () => {
       // Clear starting flag
       setState(prev => ({ ...prev, starting: false }));
       
-      // REQ-01: Schedule first move with 1000ms pre-roll
-      console.log(`[SCHEDULE-${scheduleId}] startTraining: scheduling pre-roll first move`);
+      // REQ-Z1: Schedule ONLY the pre-roll - no immediate move at t=0
+      console.log(`[SCHEDULE-${scheduleId}] PRE_ROLL_SCHEDULED: first move in 1000ms`);
       
+      // Single scheduler: pre-roll timeout that then sets up the interval
       nextMoveTimeoutRef.current = setTimeout(() => {
+        console.log(`[SCHEDULE-${scheduleId}] PRE_ROLL_FIRED: executing first move`);
+        
         // Guards before executing first move
         if (!currentRunningRef.current) {
           console.log(`[SCHEDULE-${scheduleId}] pre-roll: aborted - not running`);
           return;
         }
-        if (state.timerValue > 0 && state.timeRemaining <= 0) {
-          console.log(`[SCHEDULE-${scheduleId}] pre-roll: aborted - timer expired`);
-          return;
-        }
         
+        // Execute first move
+        const firstMoveTime = Date.now();
         moveToNextPosition();
+        console.log(`[SCHEDULE-${scheduleId}] MOVE#1_COMMIT: t=${firstMoveTime - sessionStartTimeRef.current}ms`);
         
-        // REQ-01: Set up cadence scheduling anchored to first move
+        // Clear the timeout reference since it's complete
+        nextMoveTimeoutRef.current = null;
+        
+        // REQ-Z3: Set up cadence scheduling anchored to first move completion
         const userDelayMs = state.delay * 1000;
         const minTtsMs = state.ttsEnabled ? 800 : 0;
         const effectiveDelay = Math.max(userDelayMs, minTtsMs);
         
         console.log(`[SCHEDULE-${scheduleId}] startTraining: setting cadence interval with ${effectiveDelay}ms delay`);
+        
+        // Start interval from first move completion
         intervalRef.current = setInterval(() => {
           // Guards before each scheduled move
           if (!currentRunningRef.current) {
@@ -436,12 +455,15 @@ const TrainingApp: React.FC = () => {
             console.log(`[SCHEDULE-${scheduleId}] interval: aborted - timer expired`);
             return;
           }
+          
+          const moveTime = Date.now();
           moveToNextPosition();
+          console.log(`[SCHEDULE-${scheduleId}] MOVE_COMMIT: t=${moveTime - sessionStartTimeRef.current}ms`);
         }, effectiveDelay);
       }, 1000);
       
-      // REQ-02: Start watchdog
-      startWatchdog();
+      // REQ-02: Start watchdog (disabled to prevent interference with scheduled pre-roll)
+      // startWatchdog();
       
       // REQ-03: Timer countdown
       if (state.timerValue > 0) {
@@ -499,6 +521,7 @@ const TrainingApp: React.FC = () => {
     try {
       // Force running state to false
       currentRunningRef.current = false;
+      sessionStartTimeRef.current = 0; // Clear session start time
       
       // Clear ALL timers, intervals, and timeouts (idempotent)
       if (intervalRef.current) {
