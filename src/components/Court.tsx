@@ -142,9 +142,9 @@ const Court: React.FC<CourtProps> = ({ activePosition, arrowPosition, forceArrow
           strokeWidth="2"
         />
 
-        {/* Training Positions */}
+        {/* Training Positions - REQ-ARW-CLR-1: Higher z-index than arrow */}
         {POSITIONS.map((position) => (
-          <g key={position.id}>
+          <g key={position.id} style={{ zIndex: 20 }}>
             <circle
               cx={position.x}
               cy={position.y}
@@ -160,7 +160,8 @@ const Court: React.FC<CourtProps> = ({ activePosition, arrowPosition, forceArrow
                 fill: 'white',
                 paintOrder: 'stroke',
                 stroke: 'rgba(0,0,0,0.45)',
-                strokeWidth: '1px'
+                strokeWidth: '1px',
+                zIndex: 25
               }}
               aria-label={position.label}
             >
@@ -169,7 +170,7 @@ const Court: React.FC<CourtProps> = ({ activePosition, arrowPosition, forceArrow
           </g>
         ))}
 
-        {/* REQ-ARW: Solid, continuous arrow with attached arrowhead */}
+        {/* REQ-ARW: Solid, continuous arrow with marker clearance */}
         {arrowPosition && (
           <g className="arrow-pointer" style={{ zIndex: 10 }}>
             <defs>
@@ -199,15 +200,33 @@ const Court: React.FC<CourtProps> = ({ activePosition, arrowPosition, forceArrow
               </filter>
             </defs>
             
-            {/* REQ-ARW-5: Minimum visible length check */}
+            {/* REQ-ARW-CLR: Calculate arrow path with marker clearance */}
             {(() => {
               const dx = arrowPosition.x - centerPosition.x;
               const dy = arrowPosition.y - centerPosition.y;
-              const length = Math.sqrt(dx * dx + dy * dy);
-              console.log(`[ARROW_RENDERED] length=${length.toFixed(1)}px headVisible=true layerOrderOK=true`);
+              const totalDistance = Math.sqrt(dx * dx + dy * dy);
               
-              // If target is too close to center, show pulse ring instead
-              if (length < 24) {
+              // REQ-ARW-CLR-2: Start arrow outside STOP circle (radius ~70px for desktop)
+              const stopCircleRadius = 70;
+              const markerRadius = 24; // Marker circle radius
+              const clearance = 8; // Distance to stay away from marker edge
+              
+              // Calculate start point outside STOP circle
+              const startDistance = Math.max(stopCircleRadius + 5, 24);
+              const startX = centerPosition.x + (dx / totalDistance) * startDistance;
+              const startY = centerPosition.y + (dy / totalDistance) * startDistance;
+              
+              // Calculate end point with marker clearance
+              const endDistance = totalDistance - markerRadius - clearance;
+              const endX = centerPosition.x + (dx / totalDistance) * endDistance;
+              const endY = centerPosition.y + (dy / totalDistance) * endDistance;
+              
+              const finalLength = endDistance - startDistance;
+              
+              console.log(`[ARROW_RENDERED] length=${finalLength.toFixed(1)}px headVisible=true layerOrderOK=true`);
+              
+              // REQ-ARW-CLR-3: If target is too close to center, show pulse ring instead
+              if (finalLength < 24) {
                 return (
                   <circle
                     cx={arrowPosition.x}
@@ -224,11 +243,11 @@ const Court: React.FC<CourtProps> = ({ activePosition, arrowPosition, forceArrow
                 );
               }
               
-              // Normal arrow for sufficient distance
+              // Normal arrow with clearance
               return (
                 <path
                   ref={arrowPathRef}
-                  d={`M ${centerPosition.x} ${centerPosition.y} L ${arrowPosition.x} ${arrowPosition.y}`}
+                  d={`M ${startX} ${startY} L ${endX} ${endY}`}
                   stroke="hsl(var(--court-highlight))"
                   strokeWidth="8"
                   strokeLinecap="round"

@@ -770,21 +770,26 @@ const TrainingApp: React.FC = () => {
             id="stopOverlayBtn"
             onClick={stopTraining}
             className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 
-                       w-32 h-32 md:w-40 md:h-40 bg-danger text-danger-foreground 
+                       w-32 h-32 md:w-40 md:h-40 
                        rounded-full flex items-center justify-center font-bold 
-                       hover:bg-danger/90 focus:outline-none focus:ring-4 focus:ring-danger/50
-                       transition-colors duration-200 z-50"
+                       hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-red-500/50
+                       transition-all duration-200 z-50"
             style={{
+              // REQ-STOP-BTN-1: Circular button with proper background
+              background: 'linear-gradient(135deg, #dc2626, #b91c1c)',
+              color: 'white',
+              border: '3px solid rgba(255,255,255,0.2)',
+              boxShadow: '0 8px 32px rgba(220, 38, 38, 0.4)',
               // REQ-STOP-FIT-1: Auto-scale text to fit circle (60-80% of diameter)
               fontSize: state.timerValue > 0 ? 'clamp(0.8rem, 4vw, 1.2rem)' : 'clamp(1.2rem, 6vw, 2rem)'
             }}
             aria-label="Stop Training"
           >
             <div className="text-center leading-tight">
-              <div>STOP</div>
+              <div className="font-black tracking-wide">STOP</div>
               {/* REQ-TMR-COMP-3: Show countdown only when TimerEnabled = TRUE AND running */}
               {state.timerValue > 0 && (
-                <div className="text-xs md:text-sm opacity-90 mt-1">
+                <div className="text-xs md:text-sm opacity-90 mt-1 font-mono">
                   {Math.floor(state.timeRemaining / 60)}:{(state.timeRemaining % 60).toString().padStart(2, '0')}
                 </div>
               )}
