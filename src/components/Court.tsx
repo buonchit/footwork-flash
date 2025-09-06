@@ -192,56 +192,39 @@ const Court: React.FC<CourtProps> = ({ activePosition, arrowPosition, forceArrow
           </g>
         ))}
 
-        {/* REQ-CL1: Arrow above court lines with centerline separation */}
+        {/* REQ-AR-2: Arrow above court lines with proper layering */}
         {arrowPosition && (
-          <g className="arrow-pointer" style={{ zIndex: 15 }}>
+          <g className="arrow-container" style={{ zIndex: 15 }}>
+            {/* REQ-AR-1: Subtle halo for centerline separation (no heavy filters) */}
             <defs>
-              {/* REQ-ARW-2: Filled chevron/triangle head with precise orientation */}
-              <marker
-                id="arrowhead"
-                markerWidth="12"
-                markerHeight="8"
-                refX="12"
-                refY="4"
-                orient="auto"
-                markerUnits="strokeWidth"
-              >
-                <polygon
-                  points="0 0, 12 4, 0 8"
-                  fill="hsl(var(--court-highlight))"
-                  stroke="none"
-                />
-              </marker>
-              {/* REQ-CL1: Enhanced glow for centerline separation */}
-              <filter id="arrowGlow" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-                <feMorphology operator="dilate" radius="1" in="SourceGraphic" result="thickened"/>
-                <feMerge> 
-                  <feMergeNode in="coloredBlur"/>
-                  <feMergeNode in="thickened"/>
+              <filter id="arrowHalo" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="1.5" result="blur"/>
+                <feMerge>
+                  <feMergeNode in="blur"/>
                   <feMergeNode in="SourceGraphic"/>
                 </feMerge>
               </filter>
             </defs>
             
-            {/* REQ-CL2: Calculate arrow path with proper offsets */}
+            {/* REQ-AR-3: Calculate arrow path with proper offsets */}
             {(() => {
               const dx = arrowPosition.x - centerPosition.x;
               const dy = arrowPosition.y - centerPosition.y;
               const totalDistance = Math.sqrt(dx * dx + dy * dy);
               
-              // REQ-CL3: Handle vertical paths (avoid divide by zero)
+              // REQ-AR-4: Handle vertical paths explicitly
               if (totalDistance < 1) {
+                console.log(`[ARROW_DIAGNOSTIC] target=center visible=false reason=zero_distance`);
                 return null; // No arrow for center position
               }
               
-              // REQ-CL2: Offset calculations
+              // REQ-AR-3: Offset calculations
               const stopCircleRadius = 70;
               const markerRadius = 24;
               const clearance = 8;
               const startMargin = 8;
               
-              // Normalize direction vector
+              // Normalize direction vector (REQ-AR-4: robust for vertical)
               const dirX = dx / totalDistance;
               const dirY = dy / totalDistance;
               
@@ -257,20 +240,27 @@ const Court: React.FC<CourtProps> = ({ activePosition, arrowPosition, forceArrow
               
               const finalLength = endDistance - startDistance;
               
-              console.log(`[ARROW_RENDERED] length=${finalLength.toFixed(1)}px headVisible=true layerOrderOK=true`);
+              // REQ-AR-6: Diagnostic logging
+              const targetPosition = POSITIONS.find(p => 
+                Math.abs(p.x - arrowPosition.x) < 5 && Math.abs(p.y - arrowPosition.y) < 5
+              );
+              const orientation = Math.abs(dirX) < 0.1 ? (dirY < 0 ? 'up' : 'down') : 
+                                 Math.abs(dirY) < 0.1 ? (dirX < 0 ? 'left' : 'right') : 'diagonal';
               
-              // REQ-CL2: Minimum visible length check
+              console.log(`[ARROW_DIAGNOSTIC] target=${targetPosition?.id || 'unknown'} length=${finalLength.toFixed(1)}px orientation=${orientation} layerOrder=OK`);
+              
+              // REQ-AR-3: Minimum visible length check
               if (finalLength < 24) {
-                // Show pulse ring at target for very short distances
+                console.log(`[ARROW_DIAGNOSTIC] target=${targetPosition?.id} visible=pulse reason=short_distance`);
                 return (
                   <circle
                     cx={arrowPosition.x}
                     cy={arrowPosition.y}
                     r="16"
                     fill="none"
-                    stroke="hsl(var(--court-highlight))"
+                    stroke="#FFD700"
                     strokeWidth="4"
-                    filter="url(#arrowGlow)"
+                    filter="url(#arrowHalo)"
                     style={{
                       opacity: 1,
                       animation: `arrow-pulse-${forceArrowRedraw} 0.45s ease-out forwards`
@@ -279,12 +269,35 @@ const Court: React.FC<CourtProps> = ({ activePosition, arrowPosition, forceArrow
                 );
               }
               
-              // REQ-CL1: Arrow with enhanced visibility and centerline separation
+              // REQ-AR-1: Calculate arrowhead as solid polygon
+              const headLength = 16;
+              const headWidth = 10;
+              
+              // Calculate arrowhead points
+              const headTipX = endX;
+              const headTipY = endY;
+              const headBaseX = endX - dirX * headLength;
+              const headBaseY = endY - dirY * headLength;
+              
+              // Perpendicular vector for head width
+              const perpX = -dirY;
+              const perpY = dirX;
+              
+              const headPoint1X = headBaseX + perpX * headWidth;
+              const headPoint1Y = headBaseY + perpY * headWidth;
+              const headPoint2X = headBaseX - perpX * headWidth;
+              const headPoint2Y = headBaseY - perpY * headWidth;
+              
+              // Adjust body end to connect cleanly with head
+              const bodyEndX = headBaseX;
+              const bodyEndY = headBaseY;
+              
+              // REQ-AR-1: Fixed high-contrast colors, solid primitives
               return (
                 <g>
-                  {/* Subtle background stroke for centerline separation */}
+                  {/* Background stroke for centerline separation */}
                   <path
-                    d={`M ${startX} ${startY} L ${endX} ${endY}`}
+                    d={`M ${startX} ${startY} L ${bodyEndX} ${bodyEndY}`}
                     stroke="rgba(0,0,0,0.4)"
                     strokeWidth="10"
                     strokeLinecap="round"
@@ -295,17 +308,29 @@ const Court: React.FC<CourtProps> = ({ activePosition, arrowPosition, forceArrow
                       animation: `arrow-draw-${forceArrowRedraw} 0.45s ease-out forwards`
                     }}
                   />
-                  {/* Main arrow stroke */}
+                  
+                  {/* REQ-AR-1: Main arrow body - solid, fixed color */}
                   <path
-                    ref={arrowPathRef}
-                    d={`M ${startX} ${startY} L ${endX} ${endY}`}
-                    stroke="hsl(var(--court-highlight))"
+                    d={`M ${startX} ${startY} L ${bodyEndX} ${bodyEndY}`}
+                    stroke="#FFD700"
                     strokeWidth="8"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     fill="none"
-                    markerEnd="url(#arrowhead)"
-                    filter="url(#arrowGlow)"
+                    filter="url(#arrowHalo)"
+                    style={{
+                      opacity: 1,
+                      animation: `arrow-draw-${forceArrowRedraw} 0.45s ease-out forwards`
+                    }}
+                  />
+                  
+                  {/* REQ-AR-1: Solid arrowhead polygon - no marker-end */}
+                  <polygon
+                    points={`${headTipX},${headTipY} ${headPoint1X},${headPoint1Y} ${headPoint2X},${headPoint2Y}`}
+                    fill="#FFD700"
+                    stroke="rgba(0,0,0,0.4)"
+                    strokeWidth="1"
+                    filter="url(#arrowHalo)"
                     style={{
                       opacity: 1,
                       animation: `arrow-draw-${forceArrowRedraw} 0.45s ease-out forwards`
@@ -315,11 +340,12 @@ const Court: React.FC<CourtProps> = ({ activePosition, arrowPosition, forceArrow
               );
             })()}
             
+            {/* Center position indicator */}
             <circle
               cx={centerPosition.x}
               cy={centerPosition.y}
               r="6"
-              fill="hsl(var(--court-highlight))"
+              fill="#FFD700"
               className="animate-pulse"
               style={{ zIndex: 5 }}
             />
