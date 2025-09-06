@@ -35,7 +35,7 @@ interface TrainingState {
   activePosition: number | null;
   lastPosition: number | null;
   controlsLocked: boolean; // REQ-09: Lock controls while running
-  positionCounts: Record<number, number>; // Fair randomization: track selection counts
+  positionDeck: number[]; // Shuffle bucket: deck of positions to draw from
 }
 
 const TrainingApp: React.FC = () => {
@@ -57,7 +57,7 @@ const TrainingApp: React.FC = () => {
       activePosition: null,
       lastPosition: null,
       controlsLocked: true, // REQ-09: Default to locked during training
-      positionCounts: {} // Fair randomization: initialize empty counts
+      positionDeck: [] // Shuffle bucket: initialize empty deck
     };
     
     if (saved) {
@@ -171,32 +171,48 @@ const TrainingApp: React.FC = () => {
     }
   }, []);
 
-  // Fair randomization: choose position with minimum count, avoid consecutive repeats
-  const chooseNext = useCallback((allowed: number[], lastId: number | null, counts: Record<number, number>): number => {
-    // Find minimum count among allowed positions
-    const minCount = Math.min(...allowed.map(pos => counts[pos] || 0));
-    
-    // Build candidate list of positions with minimum count
-    let candidates = allowed.filter(pos => (counts[pos] || 0) === minCount);
-    
-    // Avoid consecutive repeats if possible (don't mutate original)
-    if (candidates.length > 1 && lastId !== null && candidates.includes(lastId)) {
-      const nonRepeatCandidates = candidates.filter(id => id !== lastId);
-      if (nonRepeatCandidates.length > 0) {
-        candidates = nonRepeatCandidates;
-      }
+  // Shuffle deck using Fisher-Yates algorithm
+  const shuffleDeck = useCallback((positions: number[]): number[] => {
+    const deck = [...positions]; // Don't mutate original
+    for (let i = deck.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [deck[i], deck[j]] = [deck[j], deck[i]];
     }
-    
-    // Random selection from fair candidates
-    const idx = Math.floor(Math.random() * candidates.length);
-    return candidates[idx];
+    return deck;
   }, []);
 
-  // Fair randomization: get next position using fair chooser and update counts
-  const getNextPosition = useCallback((): number => {
+  // Build new shuffled deck from current mode positions
+  const buildNewDeck = useCallback((): number[] => {
     const modePositions = getCurrentModePositions();
-    return chooseNext(modePositions, state.lastPosition, state.positionCounts);
-  }, [getCurrentModePositions, state.lastPosition, state.positionCounts, chooseNext]);
+    return shuffleDeck(modePositions);
+  }, [getCurrentModePositions, shuffleDeck]);
+
+  // Get next position from deck, handle consecutive repeats and deck rebuild
+  const getNextPosition = useCallback((): { position: number; newDeck: number[] } => {
+    let { positionDeck } = state;
+    
+    // If deck is empty, rebuild and shuffle
+    if (positionDeck.length === 0) {
+      positionDeck = buildNewDeck();
+    }
+    
+    // Pop next position from deck
+    let nextPos = positionDeck[0];
+    let newDeck = positionDeck.slice(1);
+    
+    // Handle consecutive repeats: if same as last position and deck has more cards, swap with next
+    if (nextPos === state.lastPosition && newDeck.length > 0) {
+      // Swap with next card in deck
+      const swapPos = newDeck[0];
+      newDeck = [nextPos, ...newDeck.slice(1)];
+      nextPos = swapPos;
+    }
+    
+    return {
+      position: nextPos,
+      newDeck: newDeck
+    };
+  }, [buildNewDeck, state.positionDeck, state.lastPosition]);
 
   // REQ-05: Force arrow redraw counter for repeat animations
   const [arrowRedrawCounter, setArrowRedrawCounter] = React.useState(0);
@@ -288,18 +304,14 @@ const TrainingApp: React.FC = () => {
       return;
     }
     
-    const nextPos = getNextPosition();
+    const { position: nextPos, newDeck } = getNextPosition();
     setState(prev => ({
       ...prev,
       activePosition: nextPos,
       lastPosition: nextPos,
       currentIdx: prev.currentIdx + 1,
       score: prev.score + 1,
-      // Fair randomization: increment count for selected position
-      positionCounts: {
-        ...prev.positionCounts,
-        [nextPos]: (prev.positionCounts[nextPos] || 0) + 1
-      }
+      positionDeck: newDeck // Update deck with remaining cards
     }));
     
     // REQ-05: Force arrow redraw for every position change
@@ -421,7 +433,7 @@ const TrainingApp: React.FC = () => {
         activePosition: null,
         currentIdx: 0,
         score: 0,
-        positionCounts: {} // Fair randomization: reset counts on session start
+        positionDeck: [] // Shuffle bucket: reset deck on session start
       }));
       
       // (d) Set running=true and lock controls
@@ -592,7 +604,7 @@ const TrainingApp: React.FC = () => {
         activePosition: null,
         lastPosition: null,
         controlsLocked: false,
-        positionCounts: {} // Fair randomization: reset counts on hard reset
+        positionDeck: [] // Shuffle bucket: reset deck on hard reset
       });
       
       // Reset schedule counter
@@ -659,7 +671,7 @@ const TrainingApp: React.FC = () => {
       ...prev, 
       mode: newMode,
       lastPosition: null, // REQ-04: Reset last position on mode change
-      positionCounts: {} // Fair randomization: reset counts on mode change
+      positionDeck: [] // Shuffle bucket: reset deck on mode change
     }));
   }, []);
 
