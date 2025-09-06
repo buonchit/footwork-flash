@@ -14,17 +14,39 @@ interface CourtProps {
   forceArrowRedraw?: number; // Add counter to force arrow redraw
 }
 
-// REQ-12: Positions shifted upward by 8px for better visual balance
-const POSITIONS: Position[] = [
-  { id: 1, x: 56, y: 38, label: "Front left corner (near net)" },
-  { id: 2, x: 305, y: 36, label: "Front center (near net)" },
-  { id: 3, x: 554, y: 38, label: "Front right corner (near net)" },
-  { id: 4, x: 552, y: 318, label: "Right mid-court" },
-  { id: 5, x: 554, y: 587, label: "Back right corner" },
-  { id: 6, x: 305, y: 587, label: "Back center" },
-  { id: 7, x: 56, y: 587, label: "Back left corner" },
-  { id: 8, x: 58, y: 318, label: "Left mid-court" }
-];
+// REQ-SYM: Calculate symmetric marker positions from court bounds
+const calculateMarkerPositions = (): Position[] => {
+  // Court bounds from SVG viewBox
+  const LEFT = 10;
+  const RIGHT = 600;
+  const TOP = 10;
+  const BOTTOM = 660;
+  const centerX = (LEFT + RIGHT) / 2; // 305
+  const midY = (TOP + BOTTOM) / 2; // 335
+  
+  // REQ-SYM-1: Equal paddings from edges (5% of dimensions)
+  const courtWidth = RIGHT - LEFT; // 590
+  const courtHeight = BOTTOM - TOP; // 650
+  const PX = courtWidth * 0.08; // ~47px horizontal padding
+  const PY = courtHeight * 0.07; // ~45px vertical padding
+  
+  // REQ-SYM-3: Downward nudge for visual balance
+  const NUDGE_Y = 10;
+  
+  // REQ-SYM-2: Canonical symmetric positions with nudge
+  return [
+    { id: 1, x: LEFT + PX, y: TOP + PY + NUDGE_Y, label: "Front left corner (near net)" },
+    { id: 2, x: centerX, y: TOP + PY + NUDGE_Y, label: "Front center (near net)" },
+    { id: 3, x: RIGHT - PX, y: TOP + PY + NUDGE_Y, label: "Front right corner (near net)" },
+    { id: 4, x: RIGHT - PX, y: midY + NUDGE_Y, label: "Right mid-court" },
+    { id: 5, x: RIGHT - PX, y: BOTTOM - PY + NUDGE_Y, label: "Back right corner" },
+    { id: 6, x: centerX, y: BOTTOM - PY + NUDGE_Y, label: "Back center" },
+    { id: 7, x: LEFT + PX, y: BOTTOM - PY + NUDGE_Y, label: "Back left corner" },
+    { id: 8, x: LEFT + PX, y: midY + NUDGE_Y, label: "Left mid-court" }
+  ];
+};
+
+const POSITIONS: Position[] = calculateMarkerPositions();
 
 const Court: React.FC<CourtProps> = ({ activePosition, arrowPosition, forceArrowRedraw = 0 }) => {
   const centerPosition = { x: 305, y: 360 };
