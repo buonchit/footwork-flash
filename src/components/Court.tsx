@@ -302,20 +302,6 @@ const Court: React.FC<CourtProps> = ({ activePosition, arrowPosition, forceArrow
               // REQ-AR-1: Fixed high-contrast colors, solid primitives
               return (
                 <g>
-                  {/* Background stroke for centerline separation */}
-                  <path
-                    d={`M ${startX} ${startY} L ${bodyEndX} ${bodyEndY}`}
-                    stroke="rgba(0,0,0,0.4)"
-                    strokeWidth="10"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    fill="none"
-                    style={{
-                      opacity: 1,
-                      animation: `arrow-draw-${forceArrowRedraw} 0.45s ease-out forwards`
-                    }}
-                  />
-                  
                   {/* REQ-AR-1: Main arrow body - solid, fixed color */}
                   <path
                     d={`M ${startX} ${startY} L ${bodyEndX} ${bodyEndY}`}
@@ -324,10 +310,25 @@ const Court: React.FC<CourtProps> = ({ activePosition, arrowPosition, forceArrow
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     fill="none"
-                    filter="url(#arrowHalo)"
                     style={{
                       opacity: 1,
-                      animation: `arrow-draw-${forceArrowRedraw} 0.45s ease-out forwards`
+                      animation: `arrow-draw-${forceArrowRedraw} 0.45s ease-out forwards`,
+                      paintOrder: 'stroke'
+                    }}
+                  />
+                  
+                  {/* Background stroke for centerline separation */}
+                  <path
+                    d={`M ${startX} ${startY} L ${bodyEndX} ${bodyEndY}`}
+                    stroke="rgba(0,0,0,0.3)"
+                    strokeWidth="12"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    fill="none"
+                    style={{
+                      opacity: 0.8,
+                      animation: `arrow-draw-${forceArrowRedraw} 0.45s ease-out forwards`,
+                      paintOrder: 'fill'
                     }}
                   />
                   
