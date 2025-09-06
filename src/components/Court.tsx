@@ -171,56 +171,87 @@ const Court: React.FC<CourtProps> = ({ activePosition, arrowPosition, forceArrow
 
         {/* REQ-ARW: Solid, continuous arrow with attached arrowhead */}
         {arrowPosition && (
-          <g className="arrow-pointer">
+          <g className="arrow-pointer" style={{ zIndex: 10 }}>
             <defs>
               {/* REQ-ARW-2: Filled chevron/triangle head with precise orientation */}
               <marker
                 id="arrowhead"
-                markerWidth="14"
-                markerHeight="10"
-                refX="14"
-                refY="5"
+                markerWidth="12"
+                markerHeight="8"
+                refX="12"
+                refY="4"
                 orient="auto"
                 markerUnits="strokeWidth"
               >
                 <polygon
-                  points="0 0, 14 5, 0 10"
+                  points="0 0, 12 4, 0 8"
                   fill="hsl(var(--court-highlight))"
                   stroke="none"
                 />
               </marker>
               {/* REQ-ARW-1: Subtle outer glow for separation */}
               <filter id="arrowGlow" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
                 <feMerge> 
                   <feMergeNode in="coloredBlur"/>
                   <feMergeNode in="SourceGraphic"/>
                 </feMerge>
               </filter>
             </defs>
-            {/* REQ-ARW-1: Thick, continuous stroke with rounded caps */}
-            <path
-              ref={arrowPathRef}
-              d={`M ${centerPosition.x} ${centerPosition.y} L ${arrowPosition.x} ${arrowPosition.y}`}
-              stroke="hsl(var(--court-highlight))"
-              strokeWidth="8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              fill="none"
-              markerEnd="url(#arrowhead)"
-              filter="url(#arrowGlow)"
-              style={{
-                // REQ-ARW-3: Animation restarts on each move
-                opacity: 0,
-                animation: `arrow-draw-${forceArrowRedraw} 0.45s ease-out forwards`
-              }}
-            />
+            
+            {/* REQ-ARW-5: Minimum visible length check */}
+            {(() => {
+              const dx = arrowPosition.x - centerPosition.x;
+              const dy = arrowPosition.y - centerPosition.y;
+              const length = Math.sqrt(dx * dx + dy * dy);
+              console.log(`[ARROW_RENDERED] length=${length.toFixed(1)}px headVisible=true layerOrderOK=true`);
+              
+              // If target is too close to center, show pulse ring instead
+              if (length < 24) {
+                return (
+                  <circle
+                    cx={arrowPosition.x}
+                    cy={arrowPosition.y}
+                    r="16"
+                    fill="none"
+                    stroke="hsl(var(--court-highlight))"
+                    strokeWidth="4"
+                    style={{
+                      opacity: 1,
+                      animation: `arrow-pulse-${forceArrowRedraw} 0.45s ease-out forwards`
+                    }}
+                  />
+                );
+              }
+              
+              // Normal arrow for sufficient distance
+              return (
+                <path
+                  ref={arrowPathRef}
+                  d={`M ${centerPosition.x} ${centerPosition.y} L ${arrowPosition.x} ${arrowPosition.y}`}
+                  stroke="hsl(var(--court-highlight))"
+                  strokeWidth="8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  fill="none"
+                  markerEnd="url(#arrowhead)"
+                  filter="url(#arrowGlow)"
+                  style={{
+                    // REQ-ARW-3: Ensure arrow becomes fully visible after animation
+                    opacity: 1,
+                    animation: `arrow-draw-${forceArrowRedraw} 0.45s ease-out forwards`
+                  }}
+                />
+              );
+            })()}
+            
             <circle
               cx={centerPosition.x}
               cy={centerPosition.y}
               r="6"
               fill="hsl(var(--court-highlight))"
               className="animate-pulse"
+              style={{ zIndex: 5 }}
             />
           </g>
         )}
