@@ -1,73 +1,78 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Master Footwork Design System - Badminton Training App */
-
 @layer base {
   :root {
-    /* Badminton Court Theme - Green Gradient Background */
-    --background: 150 50% 8%;
-    --background-secondary: 150 70% 6%;
-    --foreground: 120 20% 85%;
-
-/* Court Colors */
-  --court-surface: 120 10% 95%;
-  --court-lines: 120 5% 30%;
-  --court-active: 120 70% 45%;
-  --court-highlight: 45 100% 50%;
-  
-  /* Position Markers */
-  --court-marker: 150 20% 25%;
-  --court-marker-border: 120 60% 40%;
-  --court-active: 120 70% 45%;
-  --court-active-border: 45 100% 50%;
-
-  /* Training System Colors */
-    --primary: 150 60% 15%;
-    --primary-foreground: 120 20% 95%;
-    --primary-hover: 150 65% 18%;
-
-    --secondary: 150 30% 20%;
-    --secondary-foreground: 120 15% 90%;
-
-    --success: 120 70% 45%;
-    --success-foreground: 120 20% 95%;
-
-    --warning: 45 100% 50%;
-    --warning-foreground: 45 20% 10%;
-
-    --destructive: 0 70% 50%;
-    --destructive-foreground: 0 10% 95%;
-
-    /* Interactive Elements */
-    --card: 150 40% 12%;
-    --card-foreground: 120 15% 85%;
-
-    --border: 150 30% 25%;
-    --input: 150 35% 15%;
-    --ring: 120 70% 45%;
-
-    --muted: 150 25% 18%;
-    --muted-foreground: 120 10% 65%;
-
-    --accent: 150 50% 20%;
-    --accent-foreground: 120 15% 90%;
-
-    /* Design System Tokens */
-    --radius: 0.75rem;
-    --shadow-court: 0 10px 40px -15px hsl(150 50% 5% / 0.8);
-    --shadow-glow: 0 0 30px hsl(120 70% 45% / 0.3);
+    --background: 220 10% 3%;
+    --foreground: 60 9% 98%;
+    --card: 220 10% 6%;
+    --card-foreground: 60 9% 98%;
+    --popover: 220 10% 6%;
+    --popover-foreground: 60 9% 98%;
+    --primary: 142 76% 36%;
+    --primary-foreground: 355 7% 97%;
+    --secondary: 220 10% 14%;
+    --secondary-foreground: 60 9% 98%;
+    --muted: 220 10% 12%;
+    --muted-foreground: 60 5% 64%;
+    --accent: 220 10% 12%;
+    --accent-foreground: 60 9% 98%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 60 9% 98%;
+    --border: 220 10% 18%;
+    --input: 220 10% 18%;
+    --ring: 142 76% 36%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 0.5rem;
     
-    /* Gradients */
-    --gradient-background: linear-gradient(135deg, hsl(150 50% 8%), hsl(150 70% 6%));
-    --gradient-court: linear-gradient(180deg, hsl(120 15% 96%), hsl(120 10% 92%));
-    --gradient-button: linear-gradient(135deg, hsl(150 60% 15%), hsl(150 65% 18%));
+    /* Training-specific colors */
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 0%;
+    --danger: 0 84% 60%;
+    --danger-foreground: 0 0% 100%;
     
-    /* Animation Timings */
-    --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-smooth: 0.45s cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-bounce: 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    /* Court-specific colors */
+    --court-surface: 120 60% 20%;
+    --court-lines: 0 0% 100%;
+    --court-highlight: 45 93% 47%;
+    --court-marker: 142 76% 36%;
+    --court-marker-active: 45 93% 47%;
+  }
+
+  .dark {
+    --background: 220 10% 3%;
+    --foreground: 60 9% 98%;
+    --card: 220 10% 6%;
+    --card-foreground: 60 9% 98%;
+    --popover: 220 10% 6%;
+    --popover-foreground: 60 9% 98%;
+    --primary: 142 76% 36%;
+    --primary-foreground: 355 7% 97%;
+    --secondary: 220 10% 14%;
+    --secondary-foreground: 60 9% 98%;
+    --muted: 220 10% 12%;
+    --muted-foreground: 60 5% 64%;
+    --accent: 220 10% 12%;
+    --accent-foreground: 60 9% 98%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 60 9% 98%;
+    --border: 220 10% 18%;
+    --input: 220 10% 18%;
+    --ring: 142 76% 36%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
   }
 }
 
@@ -75,71 +80,138 @@
   * {
     @apply border-border;
   }
-
   body {
     @apply bg-background text-foreground;
-    background: var(--gradient-background);
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  }
-
-  html {
-    scroll-behavior: smooth;
+    font-family: 'Inter', system-ui, sans-serif;
   }
 }
 
 @layer components {
-  /* Training Button Variants */
-  .btn-training {
-    @apply inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200;
-    @apply bg-primary text-primary-foreground hover:bg-primary-hover;
-    @apply shadow-md hover:shadow-lg active:scale-95;
-    background: var(--gradient-button);
+  /* Button styles using semantic colors */
+  .btn-primary {
+    @apply bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-lg font-medium inline-flex items-center transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background;
   }
-
+  
   .btn-secondary {
-    @apply btn-training bg-secondary text-secondary-foreground;
-    background: linear-gradient(135deg, hsl(var(--secondary)), hsl(var(--muted)));
+    @apply bg-secondary text-secondary-foreground hover:bg-secondary/90 px-4 py-2 rounded-lg font-medium inline-flex items-center transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background;
   }
-
+  
   .btn-success {
-    @apply btn-training bg-success text-success-foreground;
-    background: linear-gradient(135deg, hsl(var(--success)), hsl(120 65% 40%));
+    @apply bg-success text-success-foreground hover:bg-success/90 px-4 py-2 rounded-lg font-medium inline-flex items-center transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background;
   }
-
+  
   .btn-warning {
-    @apply btn-training bg-warning text-warning-foreground;
-    background: linear-gradient(135deg, hsl(var(--warning)), hsl(45 95% 45%));
+    @apply bg-warning text-warning-foreground hover:bg-warning/90 px-4 py-2 rounded-lg font-medium inline-flex items-center transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background;
   }
-
-  /* Court Elements */
-  .court-container {
-    @apply relative rounded-2xl shadow-2xl;
-    box-shadow: var(--shadow-court);
-    background: var(--gradient-court);
-    /* Isolate court touches from controls */
-    touch-action: none;
-    isolation: isolate;
+  
+  .btn-danger {
+    @apply bg-danger text-danger-foreground hover:bg-danger/90 px-4 py-2 rounded-lg font-medium inline-flex items-center transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background;
   }
-
+  
+  .btn-training {
+    @apply px-3 py-2 rounded-lg font-medium inline-flex items-center transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background;
+  }
+  
+  /* Court position markers with stable geometry */
   .court-position {
     fill: hsl(var(--court-marker));
-    stroke: hsl(var(--court-marker-border));
-    stroke-width: 3;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    cursor: pointer;
-    transform-box: fill-box;
-    transform-origin: 50% 50%;
+    stroke: hsl(var(--border));
+    stroke-width: 2;
+    transition: all 0.3s ease;
+    transform-origin: center;
   }
-
+  
   .court-position.active {
-    fill: hsl(var(--court-active));
-    stroke: hsl(var(--court-active-border));
-    stroke-width: 4;
-    transform: scale(1.18);
-    animation: none;
+    fill: hsl(var(--court-marker-active));
+    animation: position-pulse 1.5s infinite;
+    transform: scale(1.15);
+  }
+  
+  .court-position:hover {
+    fill: hsl(var(--court-marker-active));
+    transform: scale(1.1);
+  }
+  
+  /* Golden arrow pointer */
+  .arrow-pointer {
+    pointer-events: none;
+  }
+  
+  /* Control panel styling */
+  .control-panel {
+    @apply bg-card/95 backdrop-blur-sm border border-border rounded-xl p-6 shadow-xl;
+  }
+  
+  /* Mobile-safe slider styling */
+  .mobile-safe-slider {
+    @apply relative w-full;
+  }
+  
+  .mobile-safe-slider-track {
+    @apply relative w-full h-6 bg-secondary rounded-full overflow-hidden;
+  }
+  
+  .mobile-safe-slider-range {
+    @apply absolute h-full bg-primary transition-all duration-200 ease-out;
+  }
+  
+  .mobile-safe-slider-thumb {
+    @apply absolute top-1/2 w-6 h-6 bg-primary-foreground border-2 border-primary rounded-full transform -translate-y-1/2 cursor-grab active:cursor-grabbing shadow-lg transition-all duration-200 ease-out;
+  }
+  
+  .mobile-safe-slider-thumb:hover {
+    @apply scale-110;
+  }
+  
+  .mobile-safe-slider-thumb:active {
+    @apply scale-125;
+  }
+  
+  .mobile-safe-slider.locked .mobile-safe-slider-thumb {
+    @apply cursor-not-allowed opacity-50;
+  }
+  
+  .mobile-safe-slider.locked .mobile-safe-slider-track {
+    @apply opacity-60;
+  }
+}
+
+@layer utilities {
+  /* Position pulse animation */
+  @keyframes position-pulse {
+    0%, 100% {
+      transform: scale(1.15);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.25);
+      opacity: 0.8;
+    }
+  }
+  
+  /* Fade in animation */
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
-  /* Arrow animation keyframes - dynamic generation for force redraw */
+  /* Dynamic arrow animation keyframes - force redraw with counter */
+  @keyframes arrow-draw {
+    from {
+      stroke-dashoffset: 100;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  /* Generate unique keyframes for arrow redraw counter */
   @keyframes arrow-draw-0 { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
   @keyframes arrow-draw-1 { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
   @keyframes arrow-draw-2 { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
@@ -150,98 +222,4 @@
   @keyframes arrow-draw-7 { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
   @keyframes arrow-draw-8 { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
   @keyframes arrow-draw-9 { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
-
-  .arrow-pointer {
-    @apply transition-all;
-    transition-duration: var(--transition-smooth);
-    filter: drop-shadow(0 2px 8px hsl(45 100% 50% / 0.6));
-  }
-
-  /* Control Panel */
-  .control-panel {
-    @apply bg-card/80 backdrop-blur-sm border border-border rounded-2xl p-4;
-    @apply shadow-lg;
-    /* Prevent touch events from bleeding through to court */
-    touch-action: manipulation;
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    -khtml-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
-  }
-
-  .slider-input {
-    @apply w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer;
-    @apply focus:outline-none focus:ring-2 focus:ring-ring;
-    /* Mobile-safe touch handling */
-    touch-action: pan-x;
-    pointer-events: auto;
-  }
-
-  .slider-input::-webkit-slider-thumb {
-    @apply appearance-none w-5 h-5 rounded-full bg-success cursor-pointer;
-    box-shadow: 0 2px 6px hsl(var(--success) / 0.3);
-    touch-action: manipulation;
-  }
-
-  .slider-input:disabled {
-    @apply opacity-50 cursor-not-allowed;
-    pointer-events: none;
-  }
-
-  .badge-version {
-    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold;
-    @apply bg-success/20 text-success border border-success/30;
-  }
-
-  /* Responsive Animations */
-  .scale-hover {
-    @apply transition-transform duration-200 hover:scale-105 active:scale-95;
-  }
-
-  .fade-in {
-    animation: fadeIn var(--transition-smooth) ease-out;
-  }
-
-  .slide-up {
-    animation: slideUp var(--transition-smooth) ease-out;
-  }
-}
-
-@keyframes boom {
-  0% {
-    transform: scale(1);
-    opacity: 0.7;
-  }
-  50% {
-    transform: scale(1.4);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1.25);
-    opacity: 1;
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }

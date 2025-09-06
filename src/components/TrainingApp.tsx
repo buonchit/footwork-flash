@@ -3,7 +3,7 @@ import Court, { POSITIONS } from './Court';
 import TrainingControls, { TRAINING_MODES } from './TrainingControls';
 import { useToast } from '../hooks/use-toast';
 
-// Mode position mappings
+// Mode position mappings with corrected Random 2-4-6-8 label
 const MODE_POSITIONS: Record<string, number[]> = {
   'full-court': [1, 2, 3, 4, 5, 6, 7, 8],
   'front-court': [1, 2, 3],
@@ -216,7 +216,7 @@ const TrainingApp: React.FC = () => {
     
     console.log(`[SCHEDULE-${scheduleId}] moveToNextPosition: moved to position ${nextPos}`);
     
-    // Non-blocking audio feedback
+    // Non-blocking audio feedback - TTS fires exactly when arrow renders
     speakNumber(nextPos);
     if (!state.ttsEnabled) {
       playBeep();
@@ -338,38 +338,37 @@ const TrainingApp: React.FC = () => {
       // Clear starting flag
       setState(prev => ({ ...prev, starting: false }));
       
-      // (f) Trigger first move immediately (REQ-INT-4: First-Move Guarantee)
-      console.log(`[SCHEDULE-${scheduleId}] startTraining: triggering first move`);
+      // (f) Trigger first move with ~1000ms pre-roll (REQ-INT-4: First-Move Guarantee)
+      console.log(`[SCHEDULE-${scheduleId}] startTraining: scheduling pre-roll first move`);
       
-      // Use setTimeout to ensure move happens within 300-500ms
+      // Pre-roll: ~1000ms before first move
       setTimeout(() => {
         if (currentRunningRef.current) {
           moveToNextPosition();
+          
+          // Start cadence scheduling anchored to this first move
+          const userDelayMs = state.delay * 1000;
+          const minTtsMs = state.ttsEnabled ? 800 : 0;
+          const effectiveDelay = Math.max(userDelayMs, minTtsMs);
+          
+          console.log(`[SCHEDULE-${scheduleId}] startTraining: setting cadence interval with ${effectiveDelay}ms delay`);
+          intervalRef.current = setInterval(() => {
+            // REQ-INT-7: Scheduling barriers & race-free guards
+            if (!currentRunningRef.current) {
+              console.log(`[SCHEDULE-${scheduleId}] interval: aborted - not running`);
+              return;
+            }
+            if (state.timerValue > 0 && state.timeRemaining <= 0) {
+              console.log(`[SCHEDULE-${scheduleId}] interval: aborted - timer expired`);
+              return;
+            }
+            moveToNextPosition();
+          }, effectiveDelay);
         }
-      }, 100);
+      }, 1000);
       
       // REQ-INT-8: Start watchdog
       startWatchdog();
-      
-      // Enforce minimum delay for TTS sync (REQ-INT-5)
-      const userDelayMs = state.delay * 1000;
-      const minTtsMs = state.ttsEnabled ? 800 : 0;
-      const effectiveDelay = Math.max(userDelayMs, minTtsMs);
-      
-      // Set up interval for subsequent positions with comprehensive guards
-      console.log(`[SCHEDULE-${scheduleId}] startTraining: setting interval with ${effectiveDelay}ms delay`);
-      intervalRef.current = setInterval(() => {
-        // REQ-INT-7: Scheduling barriers & race-free guards
-        if (!currentRunningRef.current) {
-          console.log(`[SCHEDULE-${scheduleId}] interval: aborted - not running`);
-          return;
-        }
-        if (state.timerValue > 0 && state.timeRemaining <= 0) {
-          console.log(`[SCHEDULE-${scheduleId}] interval: aborted - timer expired`);
-          return;
-        }
-        moveToNextPosition();
-      }, effectiveDelay);
       
       // REQ-INT-6: Timer guardrails
       if (state.timerValue > 0) {
