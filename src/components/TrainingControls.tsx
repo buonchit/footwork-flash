@@ -21,6 +21,7 @@ interface TrainingControlsProps {
   onToggleLock: () => void;
 }
 
+// REQ-11: Training modes with explicit position labels
 const TRAINING_MODES = [
   { value: 'full-court', label: 'Full court (1-2-3-4-5-6-7-8)' },
   { value: 'front-court', label: 'Front Court (1-2-3)' },

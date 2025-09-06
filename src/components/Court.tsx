@@ -14,15 +14,16 @@ interface CourtProps {
   forceArrowRedraw?: number; // Add counter to force arrow redraw
 }
 
+// REQ-12: Positions shifted upward by 8px for better visual balance
 const POSITIONS: Position[] = [
-  { id: 1, x: 56, y: 46, label: "Front left corner (near net)" },
-  { id: 2, x: 305, y: 44, label: "Front center (near net)" },
-  { id: 3, x: 554, y: 46, label: "Front right corner (near net)" },
-  { id: 4, x: 552, y: 326, label: "Right mid-court" },
-  { id: 5, x: 554, y: 595, label: "Back right corner" },
-  { id: 6, x: 305, y: 595, label: "Back center" },
-  { id: 7, x: 56, y: 595, label: "Back left corner" },
-  { id: 8, x: 58, y: 326, label: "Left mid-court" }
+  { id: 1, x: 56, y: 38, label: "Front left corner (near net)" },
+  { id: 2, x: 305, y: 36, label: "Front center (near net)" },
+  { id: 3, x: 554, y: 38, label: "Front right corner (near net)" },
+  { id: 4, x: 552, y: 318, label: "Right mid-court" },
+  { id: 5, x: 554, y: 587, label: "Back right corner" },
+  { id: 6, x: 305, y: 587, label: "Back center" },
+  { id: 7, x: 56, y: 587, label: "Back left corner" },
+  { id: 8, x: 58, y: 318, label: "Left mid-court" }
 ];
 
 const Court: React.FC<CourtProps> = ({ activePosition, arrowPosition, forceArrowRedraw = 0 }) => {

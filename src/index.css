@@ -40,7 +40,7 @@
     --danger: 0 84% 60%;
     --danger-foreground: 0 0% 100%;
     
-    /* Court-specific colors */
+    /* REQ-06 & REQ-12: Court-specific colors */
     --court-surface: 120 60% 20%;
     --court-lines: 0 0% 100%;
     --court-highlight: 45 93% 47%;

@@ -3,7 +3,7 @@ import Court, { POSITIONS } from './Court';
 import TrainingControls, { TRAINING_MODES } from './TrainingControls';
 import { useToast } from '../hooks/use-toast';
 
-// Mode position mappings with corrected Random 2-4-6-8 label
+// REQ-11: Mode position mappings with explicit positions
 const MODE_POSITIONS: Record<string, number[]> = {
   'full-court': [1, 2, 3, 4, 5, 6, 7, 8],
   'front-court': [1, 2, 3],
@@ -24,7 +24,7 @@ const MODE_POSITIONS: Record<string, number[]> = {
 
 interface TrainingState {
   running: boolean;
-  starting: boolean; // Prevent re-entry during start handshake
+  starting: boolean; // REQ-02: Prevent re-entry during start handshake
   currentIdx: number;
   score: number;
   delay: number;
@@ -34,7 +34,7 @@ interface TrainingState {
   ttsEnabled: boolean;
   activePosition: number | null;
   lastPosition: number | null;
-  controlsLocked: boolean; // Lock controls while running
+  controlsLocked: boolean; // REQ-09: Lock controls while running
 }
 
 const TrainingApp: React.FC = () => {
@@ -45,7 +45,7 @@ const TrainingApp: React.FC = () => {
     const saved = localStorage.getItem('masterFootworkState');
     const defaultState: TrainingState = {
       running: false,
-      starting: false, // Prevent re-entry during start handshake
+      starting: false, // REQ-02: Prevent re-entry during start handshake
       currentIdx: 0,
       score: 0,
       delay: 3,
@@ -55,7 +55,7 @@ const TrainingApp: React.FC = () => {
       ttsEnabled: false,
       activePosition: null,
       lastPosition: null,
-      controlsLocked: true // Default to locked during training
+      controlsLocked: true // REQ-09: Default to locked during training
     };
     
     if (saved) {
@@ -77,13 +77,14 @@ const TrainingApp: React.FC = () => {
   const currentRunningRef = useRef<boolean>(false);
   const watchdogRef = useRef<NodeJS.Timeout | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const nextMoveTimeoutRef = useRef<NodeJS.Timeout | null>(null); // REQ-01: Single scheduler
 
-  // Sync running state with ref for closures
+  // REQ-01: Sync running state with ref for closures
   useEffect(() => {
     currentRunningRef.current = state.running;
   }, [state.running]);
 
-  // Initialize speech synthesis
+  // REQ-04: Initialize speech synthesis
   useEffect(() => {
     if ('speechSynthesis' in window) {
       speechSynthesis.current = window.speechSynthesis;
@@ -102,7 +103,7 @@ const TrainingApp: React.FC = () => {
     return MODE_POSITIONS[state.mode] || MODE_POSITIONS['full-court'];
   }, [state.mode]);
 
-  // Prime audio context for user gesture compliance
+  // REQ-02: Prime audio context for user gesture compliance
   const primeAudioContext = useCallback(async (): Promise<boolean> => {
     try {
       if (!audioContextRef.current) {
@@ -118,7 +119,7 @@ const TrainingApp: React.FC = () => {
     }
   }, []);
 
-  // Non-blocking TTS with cancellation
+  // REQ-04: Non-blocking TTS with cancellation - no queue/backlog
   const speakNumber = useCallback((positionId: number) => {
     if (!currentRunningRef.current) return; // Guard: only if running
     if (!state.ttsEnabled) return;
@@ -126,7 +127,7 @@ const TrainingApp: React.FC = () => {
     try {
       if (!speechSynthesis.current) return;
       
-      // Cancel any prior utterance for sync at low delays
+      // Cancel any prior utterance to speak only current digit
       speechSynthesis.current.cancel();
       
       const utterance = new SpeechSynthesisUtterance(String(positionId));
@@ -166,7 +167,7 @@ const TrainingApp: React.FC = () => {
     }
   }, []);
 
-// Uniform position chooser avoiding consecutive repeats
+  // REQ-04: Uniform randomization avoiding consecutive repeats only
   const chooseNext = useCallback((allowed: number[], lastId: number | null): number => {
     const pool = (allowed.length > 1 && lastId !== null)
       ? allowed.filter(id => id !== lastId)
@@ -176,16 +177,76 @@ const TrainingApp: React.FC = () => {
     return pool[idx];
   }, []);
 
-  // Get next position using uniform chooser
+  // REQ-04: Get next position using uniform chooser
   const getNextPosition = useCallback((): number => {
     const modePositions = getCurrentModePositions();
     return chooseNext(modePositions, state.lastPosition);
   }, [getCurrentModePositions, state.lastPosition, chooseNext]);
 
-  // Force arrow redraw counter
+  // REQ-05: Force arrow redraw counter for repeat animations
   const [arrowRedrawCounter, setArrowRedrawCounter] = React.useState(0);
 
-  // Move to next position with comprehensive guards
+  // REQ-03 & REQ-10: Centralized, idempotent stop procedure
+  const stopTraining = useCallback(() => {
+    console.log('[TRAINING] stopTraining: entering stop procedure');
+    
+    try {
+      // REQ-03: Single source of truth - set running=false FIRST, unlock controls
+      currentRunningRef.current = false;
+      setState(prev => ({ 
+        ...prev, 
+        running: false, 
+        starting: false,
+        activePosition: null, 
+        timeRemaining: 0,
+        controlsLocked: false 
+      }));
+      console.log('[TRAINING] stopTraining: set running=false');
+      
+      // Cancel ALL scheduled callbacks (idempotent)
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+        console.log('[TRAINING] stopTraining: cleared position interval');
+      }
+      
+      if (nextMoveTimeoutRef.current) {
+        clearTimeout(nextMoveTimeoutRef.current);
+        nextMoveTimeoutRef.current = null;
+        console.log('[TRAINING] stopTraining: cleared next move timeout');
+      }
+      
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+        console.log('[TRAINING] stopTraining: cleared timer interval');
+      }
+      
+      if (watchdogRef.current) {
+        clearTimeout(watchdogRef.current);
+        watchdogRef.current = null;
+        console.log('[TRAINING] stopTraining: cleared watchdog');
+      }
+      
+      // Cancel any TTS (idempotent)
+      if (speechSynthesis.current) {
+        speechSynthesis.current.cancel();
+        console.log('[TRAINING] stopTraining: cancelled TTS');
+      }
+      
+      console.log('[TRAINING] stopTraining: stop procedure complete');
+      
+      toast({
+        title: "Training Stopped", 
+        description: `Score: ${state.score}`,
+      });
+      
+    } catch (e) {
+      console.error('[TRAINING] stopTraining: error during stop', e);
+    }
+  }, [state.score, toast]);
+
+  // REQ-02: Move to next position with comprehensive guards
   const moveToNextPosition = useCallback(() => {
     const scheduleId = scheduleIdRef.current;
     console.log(`[SCHEDULE-${scheduleId}] moveToNextPosition: executing`);
@@ -211,19 +272,19 @@ const TrainingApp: React.FC = () => {
       score: prev.score + 1
     }));
     
-    // Force arrow redraw for every position change
+    // REQ-05: Force arrow redraw for every position change
     setArrowRedrawCounter(prev => prev + 1);
     
     console.log(`[SCHEDULE-${scheduleId}] moveToNextPosition: moved to position ${nextPos}`);
     
-    // Non-blocking audio feedback - TTS fires exactly when arrow renders
+    // REQ-04: Non-blocking audio feedback - TTS fires exactly when arrow renders
     speakNumber(nextPos);
     if (!state.ttsEnabled) {
       playBeep();
     }
   }, [getNextPosition, speakNumber, playBeep, state.ttsEnabled, state.timerValue, state.timeRemaining]);
 
-  // Start preconditions check
+  // REQ-02: Start preconditions check
   const checkStartPreconditions = useCallback((): { canStart: boolean; reason?: string } => {
     // Check if mode has valid positions
     const modePositions = getCurrentModePositions();
@@ -244,7 +305,7 @@ const TrainingApp: React.FC = () => {
     return { canStart: true };
   }, [getCurrentModePositions, state.starting, state.timerValue, state.timeRemaining]);
 
-  // Start watchdog - ensures first move happens within 700ms
+  // REQ-02: Start watchdog - ensures first move happens within 700ms
   const startWatchdog = useCallback(() => {
     if (watchdogRef.current) {
       clearTimeout(watchdogRef.current);
@@ -275,11 +336,11 @@ const TrainingApp: React.FC = () => {
     }, 700);
   }, [state.activePosition, moveToNextPosition]);
 
-  // Comprehensive start training with ordered handshake
+  // REQ-01 & REQ-02: Comprehensive start training with ~1000ms pre-roll + fixed cadence
   const startTraining = useCallback(async () => {
     console.log('[TRAINING] startTraining: entering handshake');
     
-    // REQ-INT-2: Start preconditions check
+    // REQ-02: Start preconditions check
     const { canStart, reason } = checkStartPreconditions();
     if (!canStart) {
       console.log(`[TRAINING] startTraining: preconditions failed - ${reason}`);
@@ -292,14 +353,18 @@ const TrainingApp: React.FC = () => {
     }
     
     try {
-      // REQ-INT-3: Ordered start handshake (atomic)
+      // REQ-02: Atomic start handshake
       // (a) Mark session as starting and prevent re-entry
       setState(prev => ({ ...prev, starting: true }));
       
-      // (b) Clear any prior timers/intervals/animation frames and cancel any pending speech
+      // (b) Clear any prior schedules and cancel TTS
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
+      }
+      if (nextMoveTimeoutRef.current) {
+        clearTimeout(nextMoveTimeoutRef.current);
+        nextMoveTimeoutRef.current = null;
       }
       if (timerRef.current) {
         clearInterval(timerRef.current);
@@ -318,13 +383,14 @@ const TrainingApp: React.FC = () => {
       const scheduleId = scheduleIdRef.current;
       console.log(`[TRAINING] startTraining: session ${scheduleId} starting`);
       
-      // (c) Reset "last pick"/selection memory and timer remaining
+      // (c) Reset state
       setState(prev => ({
         ...prev,
         timeRemaining: prev.timerValue,
         lastPosition: null,
         activePosition: null,
-        currentIdx: 0
+        currentIdx: 0,
+        score: 0
       }));
       
       // (d) Set running=true and lock controls
@@ -338,39 +404,46 @@ const TrainingApp: React.FC = () => {
       // Clear starting flag
       setState(prev => ({ ...prev, starting: false }));
       
-      // (f) Trigger first move with ~1000ms pre-roll (REQ-INT-4: First-Move Guarantee)
+      // REQ-01: Schedule first move with 1000ms pre-roll
       console.log(`[SCHEDULE-${scheduleId}] startTraining: scheduling pre-roll first move`);
       
-      // Pre-roll: ~1000ms before first move
-      setTimeout(() => {
-        if (currentRunningRef.current) {
-          moveToNextPosition();
-          
-          // Start cadence scheduling anchored to this first move
-          const userDelayMs = state.delay * 1000;
-          const minTtsMs = state.ttsEnabled ? 800 : 0;
-          const effectiveDelay = Math.max(userDelayMs, minTtsMs);
-          
-          console.log(`[SCHEDULE-${scheduleId}] startTraining: setting cadence interval with ${effectiveDelay}ms delay`);
-          intervalRef.current = setInterval(() => {
-            // REQ-INT-7: Scheduling barriers & race-free guards
-            if (!currentRunningRef.current) {
-              console.log(`[SCHEDULE-${scheduleId}] interval: aborted - not running`);
-              return;
-            }
-            if (state.timerValue > 0 && state.timeRemaining <= 0) {
-              console.log(`[SCHEDULE-${scheduleId}] interval: aborted - timer expired`);
-              return;
-            }
-            moveToNextPosition();
-          }, effectiveDelay);
+      nextMoveTimeoutRef.current = setTimeout(() => {
+        // Guards before executing first move
+        if (!currentRunningRef.current) {
+          console.log(`[SCHEDULE-${scheduleId}] pre-roll: aborted - not running`);
+          return;
         }
+        if (state.timerValue > 0 && state.timeRemaining <= 0) {
+          console.log(`[SCHEDULE-${scheduleId}] pre-roll: aborted - timer expired`);
+          return;
+        }
+        
+        moveToNextPosition();
+        
+        // REQ-01: Set up cadence scheduling anchored to first move
+        const userDelayMs = state.delay * 1000;
+        const minTtsMs = state.ttsEnabled ? 800 : 0;
+        const effectiveDelay = Math.max(userDelayMs, minTtsMs);
+        
+        console.log(`[SCHEDULE-${scheduleId}] startTraining: setting cadence interval with ${effectiveDelay}ms delay`);
+        intervalRef.current = setInterval(() => {
+          // Guards before each scheduled move
+          if (!currentRunningRef.current) {
+            console.log(`[SCHEDULE-${scheduleId}] interval: aborted - not running`);
+            return;
+          }
+          if (state.timerValue > 0 && state.timeRemaining <= 0) {
+            console.log(`[SCHEDULE-${scheduleId}] interval: aborted - timer expired`);
+            return;
+          }
+          moveToNextPosition();
+        }, effectiveDelay);
       }, 1000);
       
-      // REQ-INT-8: Start watchdog
+      // REQ-02: Start watchdog
       startWatchdog();
       
-      // REQ-INT-6: Timer guardrails
+      // REQ-03: Timer countdown
       if (state.timerValue > 0) {
         console.log(`[TRAINING] startTraining: starting ${state.timerValue}s countdown`);
         timerRef.current = setInterval(() => {
@@ -380,7 +453,7 @@ const TrainingApp: React.FC = () => {
             
             if (newTimeRemaining <= 0) {
               console.log('[TIMER] countdown: reached 00:00 - triggering stop');
-              // Timer expired - trigger centralized stop with proper sequence
+              // REQ-03: Timer absolute stop
               setTimeout(() => {
                 if (currentRunningRef.current) {
                   stopTraining();
@@ -417,63 +490,9 @@ const TrainingApp: React.FC = () => {
       });
     }
   }, [checkStartPreconditions, primeAudioContext, state.delay, state.timerValue, 
-      state.ttsEnabled, state.mode, moveToNextPosition, startWatchdog, toast]);
+      state.ttsEnabled, state.mode, moveToNextPosition, startWatchdog, toast, stopTraining]);
 
-  // REQ-INT-10: Centralized, idempotent stop procedure
-  const stopTraining = useCallback(() => {
-    console.log('[TRAINING] stopTraining: entering stop procedure');
-    
-    try {
-      // REQ-INT-1: Single source of truth - set running=false FIRST, unlock controls
-      currentRunningRef.current = false;
-      setState(prev => ({ 
-        ...prev, 
-        running: false, 
-        starting: false,
-        activePosition: null, 
-        timeRemaining: 0,
-        controlsLocked: false 
-      }));
-      console.log('[TRAINING] stopTraining: set running=false');
-      
-      // Cancel ALL scheduled callbacks (idempotent)
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-        console.log('[TRAINING] stopTraining: cleared position interval');
-      }
-      
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-        console.log('[TRAINING] stopTraining: cleared timer interval');
-      }
-      
-      if (watchdogRef.current) {
-        clearTimeout(watchdogRef.current);
-        watchdogRef.current = null;
-        console.log('[TRAINING] stopTraining: cleared watchdog');
-      }
-      
-      // Cancel any TTS (idempotent)
-      if (speechSynthesis.current) {
-        speechSynthesis.current.cancel();
-        console.log('[TRAINING] stopTraining: cancelled TTS');
-      }
-      
-      console.log('[TRAINING] stopTraining: stop procedure complete');
-      
-      toast({
-        title: "Training Stopped", 
-        description: `Score: ${state.score}`,
-      });
-      
-    } catch (e) {
-      console.error('[TRAINING] stopTraining: error during stop', e);
-    }
-  }, [state.score, toast]);
-
-  // REQ-INT-10: Hard Reset - guaranteed kill-switch
+  // REQ-10: Hard Reset - guaranteed kill-switch
   const hardReset = useCallback(() => {
     console.log('[TRAINING] hardReset: entering kill-switch reset');
     
@@ -486,6 +505,12 @@ const TrainingApp: React.FC = () => {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
         console.log('[TRAINING] hardReset: cleared position interval');
+      }
+      
+      if (nextMoveTimeoutRef.current) {
+        clearTimeout(nextMoveTimeoutRef.current);
+        nextMoveTimeoutRef.current = null;
+        console.log('[TRAINING] hardReset: cleared next move timeout');
       }
       
       if (timerRef.current) {
@@ -509,7 +534,7 @@ const TrainingApp: React.FC = () => {
       // Reset all state to defaults
       setState({
         running: false,
-        starting: false, // Reset start handshake state
+        starting: false,
         currentIdx: 0,
         score: 0,
         delay: 3,
@@ -549,7 +574,55 @@ const TrainingApp: React.FC = () => {
     });
   }, [hardReset, toast]);
 
-  // Keyboard shortcuts
+  // Control handlers with proper state update semantics
+  const handleDelayChange = useCallback((newDelay: number) => {
+    setState(prev => ({ ...prev, delay: newDelay }));
+    
+    // REQ-09: If running and unlocked, reschedule from next interval
+    if (state.running && !state.controlsLocked) {
+      // Clear current interval and set new one from next move
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        const userDelayMs = newDelay * 1000;
+        const minTtsMs = state.ttsEnabled ? 800 : 0;
+        const effectiveDelay = Math.max(userDelayMs, minTtsMs);
+        
+        intervalRef.current = setInterval(() => {
+          if (!currentRunningRef.current) return;
+          if (state.timerValue > 0 && state.timeRemaining <= 0) return;
+          moveToNextPosition();
+        }, effectiveDelay);
+      }
+    }
+  }, [state.running, state.controlsLocked, state.ttsEnabled, state.timerValue, state.timeRemaining, moveToNextPosition]);
+
+  const handleTimerChange = useCallback((newTimerValue: number) => {
+    setState(prev => ({
+      ...prev,
+      timerValue: newTimerValue,
+      timeRemaining: state.running ? 
+        Math.min(prev.timeRemaining, newTimerValue) : // If running, adopt min of current remaining and new value
+        newTimerValue // If not running, set to new value
+    }));
+  }, [state.running]);
+
+  const handleModeChange = useCallback((newMode: string) => {
+    setState(prev => ({ 
+      ...prev, 
+      mode: newMode,
+      lastPosition: null // REQ-04: Reset last position on mode change
+    }));
+  }, []);
+
+  const handleTtsToggle = useCallback(() => {
+    setState(prev => ({ ...prev, ttsEnabled: !prev.ttsEnabled }));
+  }, []);
+
+  const handleToggleLock = useCallback(() => {
+    setState(prev => ({ ...prev, controlsLocked: !prev.controlsLocked }));
+  }, []);
+
+  // REQ-13: Remove Next button - keyboard shortcuts only for Space
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement) {
@@ -588,7 +661,7 @@ const TrainingApp: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [state.running, state.ttsEnabled, startTraining, stopTraining, speakNumber, playBeep]);
 
-  // Touch/swipe gestures
+  // REQ-09: Touch/swipe gestures (court only, no slider interference)
   useEffect(() => {
     let startX = 0;
     let startY = 0;
@@ -607,11 +680,10 @@ const TrainingApp: React.FC = () => {
       const deltaX = endX - startX;
       const deltaY = endY - startY;
       
-      // Check for horizontal swipe (≥50px)
+      // Check for horizontal swipe (≥50px) - but only for court interactions
+      // Slider interactions are handled by MobileSafeSlider component
       if (Math.abs(deltaX) >= 50 && Math.abs(deltaX) > Math.abs(deltaY)) {
-        if (deltaX > 0) {
-          // Swipe functionality removed
-        }
+        // Future swipe functionality can be added here if needed
       }
       
       startX = 0;
@@ -631,7 +703,9 @@ const TrainingApp: React.FC = () => {
   useEffect(() => {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
+      if (nextMoveTimeoutRef.current) clearTimeout(nextMoveTimeoutRef.current);
       if (timerRef.current) clearInterval(timerRef.current);
+      if (watchdogRef.current) clearTimeout(watchdogRef.current);
     };
   }, []);
 
@@ -650,7 +724,7 @@ const TrainingApp: React.FC = () => {
           Master Footwork
         </h1>
         <div className="badge-version">
-          v5.8
+          v6.0
         </div>
         {state.timeRemaining > 0 && state.running && (
           <div className="mt-4 text-warning font-mono text-lg">
@@ -668,7 +742,7 @@ const TrainingApp: React.FC = () => {
           forceArrowRedraw={arrowRedrawCounter}
         />
         
-        {/* Centered Stop Overlay */}
+        {/* REQ-07: Centered Stop Overlay with countdown */}
         {state.running && (
           <button
             id="stopOverlayBtn"
@@ -681,7 +755,7 @@ const TrainingApp: React.FC = () => {
             aria-label="Stop Training"
           >
             {state.timerValue > 0 && state.timeRemaining > 0 ? (
-              <span>STOP ({Math.floor(state.timeRemaining / 60)}:{(state.timeRemaining % 60).toString().padStart(2, '0')})</span>
+              <span>STOP<br/>({Math.floor(state.timeRemaining / 60)}:{(state.timeRemaining % 60).toString().padStart(2, '0')})</span>
             ) : (
               <span>STOP</span>
             )}
@@ -689,7 +763,7 @@ const TrainingApp: React.FC = () => {
         )}
       </main>
 
-      {/* Controls - Always Visible */}
+      {/* REQ-08: Controls - Always Visible */}
       <footer className={`px-4 py-6 ${state.running ? 'opacity-80' : 'opacity-100'} transition-opacity duration-300`}>
         <div className="max-w-4xl mx-auto">
           <TrainingControls
@@ -704,11 +778,11 @@ const TrainingApp: React.FC = () => {
             onStop={stopTraining}
             onReset={hardReset}
             onHome={goHome}
-            onDelayChange={(delay) => setState(prev => ({ ...prev, delay }))}
-            onTimerChange={(timerValue) => setState(prev => ({ ...prev, timerValue, timeRemaining: timerValue }))}
-            onModeChange={(mode) => setState(prev => ({ ...prev, mode, lastPosition: null }))}
-            onTtsToggle={() => setState(prev => ({ ...prev, ttsEnabled: !prev.ttsEnabled }))}
-            onToggleLock={() => setState(prev => ({ ...prev, controlsLocked: !prev.controlsLocked }))}
+            onDelayChange={handleDelayChange}
+            onTimerChange={handleTimerChange}
+            onModeChange={handleModeChange}
+            onTtsToggle={handleTtsToggle}
+            onToggleLock={handleToggleLock}
           />
         </div>
       </footer>
