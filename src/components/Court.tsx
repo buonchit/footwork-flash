@@ -170,9 +170,9 @@ const Court: React.FC<CourtProps> = ({ activePosition, arrowPosition, forceArrow
           </g>
         ))}
 
-        {/* REQ-ARW: Solid, continuous arrow with marker clearance */}
+        {/* REQ-CL1: Arrow above court lines with centerline separation */}
         {arrowPosition && (
-          <g className="arrow-pointer" style={{ zIndex: 10 }}>
+          <g className="arrow-pointer" style={{ zIndex: 15 }}>
             <defs>
               {/* REQ-ARW-2: Filled chevron/triangle head with precise orientation */}
               <marker
@@ -190,43 +190,56 @@ const Court: React.FC<CourtProps> = ({ activePosition, arrowPosition, forceArrow
                   stroke="none"
                 />
               </marker>
-              {/* REQ-ARW-1: Subtle outer glow for separation */}
+              {/* REQ-CL1: Enhanced glow for centerline separation */}
               <filter id="arrowGlow" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
+                <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                <feMorphology operator="dilate" radius="1" in="SourceGraphic" result="thickened"/>
                 <feMerge> 
                   <feMergeNode in="coloredBlur"/>
+                  <feMergeNode in="thickened"/>
                   <feMergeNode in="SourceGraphic"/>
                 </feMerge>
               </filter>
             </defs>
             
-            {/* REQ-ARW-CLR: Calculate arrow path with marker clearance */}
+            {/* REQ-CL2: Calculate arrow path with proper offsets */}
             {(() => {
               const dx = arrowPosition.x - centerPosition.x;
               const dy = arrowPosition.y - centerPosition.y;
               const totalDistance = Math.sqrt(dx * dx + dy * dy);
               
-              // REQ-ARW-CLR-2: Start arrow outside STOP circle (radius ~70px for desktop)
+              // REQ-CL3: Handle vertical paths (avoid divide by zero)
+              if (totalDistance < 1) {
+                return null; // No arrow for center position
+              }
+              
+              // REQ-CL2: Offset calculations
               const stopCircleRadius = 70;
-              const markerRadius = 24; // Marker circle radius
-              const clearance = 8; // Distance to stay away from marker edge
+              const markerRadius = 24;
+              const clearance = 8;
+              const startMargin = 8;
+              
+              // Normalize direction vector
+              const dirX = dx / totalDistance;
+              const dirY = dy / totalDistance;
               
               // Calculate start point outside STOP circle
-              const startDistance = Math.max(stopCircleRadius + 5, 24);
-              const startX = centerPosition.x + (dx / totalDistance) * startDistance;
-              const startY = centerPosition.y + (dy / totalDistance) * startDistance;
+              const startDistance = stopCircleRadius + startMargin;
+              const startX = centerPosition.x + dirX * startDistance;
+              const startY = centerPosition.y + dirY * startDistance;
               
               // Calculate end point with marker clearance
               const endDistance = totalDistance - markerRadius - clearance;
-              const endX = centerPosition.x + (dx / totalDistance) * endDistance;
-              const endY = centerPosition.y + (dy / totalDistance) * endDistance;
+              const endX = centerPosition.x + dirX * endDistance;
+              const endY = centerPosition.y + dirY * endDistance;
               
               const finalLength = endDistance - startDistance;
               
               console.log(`[ARROW_RENDERED] length=${finalLength.toFixed(1)}px headVisible=true layerOrderOK=true`);
               
-              // REQ-ARW-CLR-3: If target is too close to center, show pulse ring instead
+              // REQ-CL2: Minimum visible length check
               if (finalLength < 24) {
+                // Show pulse ring at target for very short distances
                 return (
                   <circle
                     cx={arrowPosition.x}
@@ -235,6 +248,7 @@ const Court: React.FC<CourtProps> = ({ activePosition, arrowPosition, forceArrow
                     fill="none"
                     stroke="hsl(var(--court-highlight))"
                     strokeWidth="4"
+                    filter="url(#arrowGlow)"
                     style={{
                       opacity: 1,
                       animation: `arrow-pulse-${forceArrowRedraw} 0.45s ease-out forwards`
@@ -243,24 +257,39 @@ const Court: React.FC<CourtProps> = ({ activePosition, arrowPosition, forceArrow
                 );
               }
               
-              // Normal arrow with clearance
+              // REQ-CL1: Arrow with enhanced visibility and centerline separation
               return (
-                <path
-                  ref={arrowPathRef}
-                  d={`M ${startX} ${startY} L ${endX} ${endY}`}
-                  stroke="hsl(var(--court-highlight))"
-                  strokeWidth="8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  fill="none"
-                  markerEnd="url(#arrowhead)"
-                  filter="url(#arrowGlow)"
-                  style={{
-                    // REQ-ARW-3: Ensure arrow becomes fully visible after animation
-                    opacity: 1,
-                    animation: `arrow-draw-${forceArrowRedraw} 0.45s ease-out forwards`
-                  }}
-                />
+                <g>
+                  {/* Subtle background stroke for centerline separation */}
+                  <path
+                    d={`M ${startX} ${startY} L ${endX} ${endY}`}
+                    stroke="rgba(0,0,0,0.4)"
+                    strokeWidth="10"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    fill="none"
+                    style={{
+                      opacity: 1,
+                      animation: `arrow-draw-${forceArrowRedraw} 0.45s ease-out forwards`
+                    }}
+                  />
+                  {/* Main arrow stroke */}
+                  <path
+                    ref={arrowPathRef}
+                    d={`M ${startX} ${startY} L ${endX} ${endY}`}
+                    stroke="hsl(var(--court-highlight))"
+                    strokeWidth="8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    fill="none"
+                    markerEnd="url(#arrowhead)"
+                    filter="url(#arrowGlow)"
+                    style={{
+                      opacity: 1,
+                      animation: `arrow-draw-${forceArrowRedraw} 0.45s ease-out forwards`
+                    }}
+                  />
+                </g>
               );
             })()}
             
