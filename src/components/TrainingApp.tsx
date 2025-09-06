@@ -120,7 +120,7 @@ const TrainingApp: React.FC = () => {
     }
   }, []);
 
-  // REQ-04: Non-blocking TTS with cancellation - no queue/backlog
+  // REQ-TT-6: Speech discipline - cancel prior, speak once per move
   const speakNumber = useCallback((positionId: number) => {
     if (!currentRunningRef.current) return; // Guard: only if running
     if (!state.ttsEnabled) return;
@@ -128,7 +128,7 @@ const TrainingApp: React.FC = () => {
     try {
       if (!speechSynthesis.current) return;
       
-      // Cancel any prior utterance to speak only current digit
+      // REQ-TT-6: Cancel any prior utterance to avoid backlog
       speechSynthesis.current.cancel();
       
       const utterance = new SpeechSynthesisUtterance(String(positionId));
@@ -136,10 +136,11 @@ const TrainingApp: React.FC = () => {
       utterance.rate = 1.0;
       utterance.volume = 0.8;
       
+      // REQ-TT-6: Speak the current digit once at arrow appearance
       speechSynthesis.current.speak(utterance);
-      console.log(`[TTS-${scheduleIdRef.current}] Speaking: ${positionId}`);
+      console.log(`[TTS-${scheduleIdRef.current}] SPEAK_ATTEMPT: ${positionId}`);
     } catch (e) {
-      console.warn('[TTS] Speech failed:', e);
+      console.warn('[TTS] SPEAK_FAILED:', e);
     }
   }, [state.ttsEnabled]);
 
@@ -636,9 +637,96 @@ const TrainingApp: React.FC = () => {
     }));
   }, []);
 
-  const handleTtsToggle = useCallback(() => {
-    setState(prev => ({ ...prev, ttsEnabled: !prev.ttsEnabled }));
-  }, []);
+  // REQ-TT-1: Atomic TTS toggle with cadence preservation and watchdog recovery
+  const handleTtsToggle = useCallback(async () => {
+    const newTtsEnabled = !state.ttsEnabled;
+    const scheduleId = scheduleIdRef.current;
+    
+    console.log(`[TTS_TOGGLE] ${state.ttsEnabled ? 'OFF' : 'ON'} -> ${newTtsEnabled ? 'ON' : 'OFF'}`);
+    
+    try {
+      // REQ-TT-1: Atomic toggle - update TTS flag immediately
+      setState(prev => ({ ...prev, ttsEnabled: newTtsEnabled }));
+      
+      // REQ-TT-1: If turning OFF -> cancel any in-flight utterance immediately
+      if (!newTtsEnabled && speechSynthesis.current) {
+        speechSynthesis.current.cancel();
+        console.log('[TTS_TOGGLE] Cancelled in-flight utterance');
+      }
+      
+      // REQ-TT-1: If turning ON -> attempt lightweight audio prime (non-blocking)
+      if (newTtsEnabled) {
+        try {
+          await primeAudioContext();
+          console.log('[TTS_TOGGLE] Audio context primed');
+        } catch (e) {
+          console.warn('[TTS_TOGGLE] Audio prime failed (non-blocking):', e);
+        }
+      }
+      
+      // REQ-TT-2: Cadence preservation - only if running
+      if (currentRunningRef.current && intervalRef.current) {
+        // Clear current interval
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+        
+        // REQ-TT-2: Recompute effective delay with new TTS state
+        const userDelayMs = state.delay * 1000;
+        const minTtsMs = newTtsEnabled ? 800 : 0;
+        const effectiveDelay = Math.max(userDelayMs, minTtsMs);
+        
+        console.log(`[TTS_TOGGLE] Updating cadence: ${effectiveDelay}ms delay (TTS: ${newTtsEnabled})`);
+        
+        // REQ-TT-2: Restart interval with new effective delay - no immediate move
+        intervalRef.current = setInterval(() => {
+          if (!currentRunningRef.current) {
+            console.log(`[SCHEDULE-${scheduleId}] interval: aborted - not running`);
+            return;
+          }
+          if (state.timerValue > 0 && state.timeRemaining <= 0) {
+            console.log(`[SCHEDULE-${scheduleId}] interval: aborted - timer expired`);
+            return;
+          }
+          
+          const moveTime = Date.now();
+          moveToNextPosition();
+          console.log(`[SCHEDULE-${scheduleId}] MOVE_COMMIT: t=${moveTime - sessionStartTimeRef.current}ms`);
+        }, effectiveDelay);
+        
+        console.log(`[TTS_TOGGLE] Cadence updated with ${effectiveDelay}ms delay`);
+      }
+      
+      // REQ-TT-5: Watchdog after toggle - ensure scheduler exists if running
+      if (currentRunningRef.current) {
+        setTimeout(() => {
+          const hasScheduler = intervalRef.current !== null || nextMoveTimeoutRef.current !== null;
+          console.log(`[TTS_TOGGLE] WATCHDOG: running=${currentRunningRef.current}, scheduler=${hasScheduler ? 'exists' : 'missing'}`);
+          
+          if (currentRunningRef.current && !hasScheduler) {
+            console.log('[TTS_TOGGLE] WATCHDOG: Recovery - scheduling next move');
+            
+            // REQ-TT-5: Schedule exactly one next move if missing
+            const userDelayMs = state.delay * 1000;
+            const minTtsMs = newTtsEnabled ? 800 : 0;
+            const effectiveDelay = Math.max(userDelayMs, minTtsMs);
+            
+            intervalRef.current = setInterval(() => {
+              if (!currentRunningRef.current) return;
+              if (state.timerValue > 0 && state.timeRemaining <= 0) return;
+              moveToNextPosition();
+            }, effectiveDelay);
+            
+            console.log('[TTS_TOGGLE] WATCHDOG: Recovery complete');
+          }
+        }, 300); // REQ-TT-5: 250-400ms watchdog delay
+      }
+      
+    } catch (e) {
+      console.error('[TTS_TOGGLE] Error during toggle:', e);
+      // Rollback on error
+      setState(prev => ({ ...prev, ttsEnabled: state.ttsEnabled }));
+    }
+  }, [state.ttsEnabled, state.delay, state.timerValue, state.timeRemaining, primeAudioContext, moveToNextPosition]);
 
   const handleToggleLock = useCallback(() => {
     setState(prev => ({ ...prev, controlsLocked: !prev.controlsLocked }));
