@@ -14,35 +14,42 @@ interface CourtProps {
   forceArrowRedraw?: number; // Add counter to force arrow redraw
 }
 
-// REQ-SYM: Calculate symmetric marker positions from court bounds
+// CENTER-SYMMETRY: Calculate perfectly symmetric marker positions
 const calculateMarkerPositions = (): Position[] => {
   // Court bounds from SVG viewBox
   const LEFT = 10;
   const RIGHT = 600;
   const TOP = 10;
   const BOTTOM = 660;
-  const centerX = (LEFT + RIGHT) / 2; // 305
-  const midY = (TOP + BOTTOM) / 2; // 335
   
-  // REQ-SYM-1: Equal paddings from edges (5% of dimensions)
+  // Court center - exact mathematical center
+  const centerX = (LEFT + RIGHT) / 2; // 305
+  const centerY = (TOP + BOTTOM) / 2; // 335
+  
+  // Uniform paddings from outer bounds (equal on opposite sides)
   const courtWidth = RIGHT - LEFT; // 590
   const courtHeight = BOTTOM - TOP; // 650
   const PX = courtWidth * 0.08; // ~47px horizontal padding
   const PY = courtHeight * 0.07; // ~45px vertical padding
   
-  // REQ-SYM-3: Downward nudge for visual balance
+  // Downward nudge for visual balance, but maintain symmetry
   const NUDGE_Y = 10;
   
-  // REQ-SYM-2: Canonical symmetric positions with nudge
+  // Apply nudge and adjust paddings to maintain symmetry
+  const adjustedCenterY = centerY + NUDGE_Y;
+  const topPadding = PY + NUDGE_Y;
+  const bottomPadding = PY + NUDGE_Y; // Keep equal to maintain symmetry
+  
+  // CENTER-SYMMETRY PLACEMENT: Each opposite pair forms line through center
   return [
-    { id: 1, x: LEFT + PX, y: TOP + PY + NUDGE_Y, label: "Front left corner (near net)" },
-    { id: 2, x: centerX, y: TOP + PY + NUDGE_Y, label: "Front center (near net)" },
-    { id: 3, x: RIGHT - PX, y: TOP + PY + NUDGE_Y, label: "Front right corner (near net)" },
-    { id: 4, x: RIGHT - PX, y: midY + NUDGE_Y, label: "Right mid-court" },
-    { id: 5, x: RIGHT - PX, y: BOTTOM - PY + NUDGE_Y, label: "Back right corner" },
-    { id: 6, x: centerX, y: BOTTOM - PY + NUDGE_Y, label: "Back center" },
-    { id: 7, x: LEFT + PX, y: BOTTOM - PY + NUDGE_Y, label: "Back left corner" },
-    { id: 8, x: LEFT + PX, y: midY + NUDGE_Y, label: "Left mid-court" }
+    { id: 1, x: LEFT + PX, y: TOP + topPadding, label: "Front left corner (near net)" },        // TL
+    { id: 2, x: centerX, y: TOP + topPadding, label: "Front center (near net)" },              // TC
+    { id: 3, x: RIGHT - PX, y: TOP + topPadding, label: "Front right corner (near net)" },    // TR
+    { id: 4, x: RIGHT - PX, y: adjustedCenterY, label: "Right mid-court" },                    // MR
+    { id: 5, x: RIGHT - PX, y: BOTTOM - bottomPadding, label: "Back right corner" },          // BR
+    { id: 6, x: centerX, y: BOTTOM - bottomPadding, label: "Back center" },                   // BC
+    { id: 7, x: LEFT + PX, y: BOTTOM - bottomPadding, label: "Back left corner" },            // BL
+    { id: 8, x: LEFT + PX, y: adjustedCenterY, label: "Left mid-court" }                      // ML
   ];
 };
 
