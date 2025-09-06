@@ -313,28 +313,32 @@ const TrainingApp: React.FC = () => {
       return;
     }
     
-    // Get the next position first
-    const { position: nextPos, newDeck } = getNextPosition(state.positionDeck, state.lastPosition, state.mode);
-    
-    setState(prev => ({
-      ...prev,
-      activePosition: nextPos,
-      lastPosition: nextPos,
-      currentIdx: prev.currentIdx + 1,
-      score: prev.score + 1,
-      positionDeck: newDeck // Update deck with remaining cards
-    }));
+    // Get the next position and update state in a single atomic operation
+    setState(prev => {
+      const { position: nextPos, newDeck } = getNextPosition(prev.positionDeck, prev.lastPosition, prev.mode);
+      console.log(`[SCHEDULE-${scheduleId}] moveToNextPosition: moved to position ${nextPos}`);
+      
+      // REQ-04: Non-blocking audio feedback - TTS fires exactly when arrow renders
+      // Note: We need to call these after setState, so we'll use a setTimeout
+      setTimeout(() => {
+        speakNumber(nextPos);
+        if (!prev.ttsEnabled) {
+          playBeep();
+        }
+      }, 0);
+      
+      return {
+        ...prev,
+        activePosition: nextPos,
+        lastPosition: nextPos,
+        currentIdx: prev.currentIdx + 1,
+        score: prev.score + 1,
+        positionDeck: newDeck // Update deck with remaining cards
+      };
+    });
     
     // REQ-05: Force arrow redraw for every position change
     setArrowRedrawCounter(prev => prev + 1);
-    
-    console.log(`[SCHEDULE-${scheduleId}] moveToNextPosition: moved to position ${nextPos}`);
-    
-    // REQ-04: Non-blocking audio feedback - TTS fires exactly when arrow renders
-    speakNumber(nextPos);
-    if (!state.ttsEnabled) {
-      playBeep();
-    }
   }, [getNextPosition, speakNumber, playBeep, state.ttsEnabled, state.timerValue, state.timeRemaining]);
 
   // REQ-TMR-COMP-1: Start preconditions check (timer compatibility)
