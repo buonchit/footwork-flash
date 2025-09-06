@@ -188,8 +188,8 @@ const TrainingApp: React.FC = () => {
   }, [getCurrentModePositions, shuffleDeck]);
 
   // Get next position from deck, handle consecutive repeats and deck rebuild
-  const getNextPosition = useCallback((): { position: number; newDeck: number[] } => {
-    let { positionDeck } = state;
+  const getNextPosition = useCallback((currentDeck: number[], lastPos: number | null): { position: number; newDeck: number[] } => {
+    let positionDeck = currentDeck;
     
     // If deck is empty, rebuild and shuffle
     if (positionDeck.length === 0) {
@@ -201,7 +201,7 @@ const TrainingApp: React.FC = () => {
     let newDeck = positionDeck.slice(1);
     
     // Handle consecutive repeats: if same as last position and deck has more cards, swap with next
-    if (nextPos === state.lastPosition && newDeck.length > 0) {
+    if (nextPos === lastPos && newDeck.length > 0) {
       // Swap with next card in deck
       const swapPos = newDeck[0];
       newDeck = [nextPos, ...newDeck.slice(1)];
@@ -212,7 +212,7 @@ const TrainingApp: React.FC = () => {
       position: nextPos,
       newDeck: newDeck
     };
-  }, [buildNewDeck, state.positionDeck, state.lastPosition]);
+  }, [buildNewDeck]);
 
   // REQ-05: Force arrow redraw counter for repeat animations
   const [arrowRedrawCounter, setArrowRedrawCounter] = React.useState(0);
@@ -304,23 +304,27 @@ const TrainingApp: React.FC = () => {
       return;
     }
     
-    const { position: nextPos, newDeck } = getNextPosition();
-    setState(prev => ({
-      ...prev,
-      activePosition: nextPos,
-      lastPosition: nextPos,
-      currentIdx: prev.currentIdx + 1,
-      score: prev.score + 1,
-      positionDeck: newDeck // Update deck with remaining cards
-    }));
+    let selectedPosition: number;
+    setState(prev => {
+      const { position: nextPos, newDeck } = getNextPosition(prev.positionDeck, prev.lastPosition);
+      selectedPosition = nextPos;
+      return {
+        ...prev,
+        activePosition: nextPos,
+        lastPosition: nextPos,
+        currentIdx: prev.currentIdx + 1,
+        score: prev.score + 1,
+        positionDeck: newDeck // Update deck with remaining cards
+      };
+    });
     
     // REQ-05: Force arrow redraw for every position change
     setArrowRedrawCounter(prev => prev + 1);
     
-    console.log(`[SCHEDULE-${scheduleId}] moveToNextPosition: moved to position ${nextPos}`);
+    console.log(`[SCHEDULE-${scheduleId}] moveToNextPosition: moved to position ${selectedPosition}`);
     
     // REQ-04: Non-blocking audio feedback - TTS fires exactly when arrow renders
-    speakNumber(nextPos);
+    speakNumber(selectedPosition);
     if (!state.ttsEnabled) {
       playBeep();
     }
