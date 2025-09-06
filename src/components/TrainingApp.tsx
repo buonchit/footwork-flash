@@ -201,7 +201,7 @@ const TrainingApp: React.FC = () => {
         running: false, 
         starting: false,
         activePosition: null, 
-        timeRemaining: 0,
+        timeRemaining: prev.timerValue, // REQ-FIX: Reset to timer value for fresh restart
         controlsLocked: false 
       }));
       console.log('[TRAINING] stopTraining: set running=false');
@@ -462,8 +462,13 @@ const TrainingApp: React.FC = () => {
         }, effectiveDelay);
       }, 1000);
       
-      // REQ-02: Start watchdog (disabled to prevent interference with scheduled pre-roll)
-      // startWatchdog();
+      // REQ-FIX: Post-timer-expiry restart watchdog
+      setTimeout(() => {
+        if (currentRunningRef.current && !nextMoveTimeoutRef.current && !intervalRef.current) {
+          console.log(`[SCHEDULE-${scheduleId}] WATCHDOG_RECOVERED: forcing first move after timer expiry restart`);
+          moveToNextPosition();
+        }
+      }, 500);
       
       // REQ-TMR-COMP-3: Timer countdown only when TimerEnabled = TRUE
       if (state.timerValue > 0) {
