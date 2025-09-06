@@ -1,5 +1,6 @@
 import React from 'react';
-import { Play, Pause, RotateCcw, Home, Volume2 } from 'lucide-react';
+import { Play, Pause, RotateCcw, Home, Volume2, Lock, LockOpen } from 'lucide-react';
+import MobileSafeSlider from './MobileSafeSlider';
 
 interface TrainingControlsProps {
   isRunning: boolean;
@@ -8,6 +9,7 @@ interface TrainingControlsProps {
   timerValue: number;
   mode: string;
   ttsEnabled: boolean;
+  controlsLocked: boolean;
   onStart: () => void;
   onStop: () => void;
   onReset: () => void;
@@ -16,6 +18,7 @@ interface TrainingControlsProps {
   onTimerChange: (value: number) => void;
   onModeChange: (mode: string) => void;
   onTtsToggle: () => void;
+  onToggleLock: () => void;
 }
 
 const TRAINING_MODES = [
@@ -43,6 +46,7 @@ const TrainingControls: React.FC<TrainingControlsProps> = ({
   timerValue,
   mode,
   ttsEnabled,
+  controlsLocked,
   onStart,
   onStop,
   onReset,
@@ -50,7 +54,8 @@ const TrainingControls: React.FC<TrainingControlsProps> = ({
   onDelayChange,
   onTimerChange,
   onModeChange,
-  onTtsToggle
+  onTtsToggle,
+  onToggleLock
 }) => {
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -70,6 +75,16 @@ const TrainingControls: React.FC<TrainingControlsProps> = ({
         </div>
       </div>
 
+      {/* Lock Status Indicator */}
+      {isRunning && controlsLocked && (
+        <div className="flex justify-center mb-4">
+          <div className="bg-warning/20 text-warning px-3 py-1 rounded-full text-xs font-medium border border-warning/30 flex items-center gap-2">
+            <Lock size={12} />
+            Controls Locked
+          </div>
+        </div>
+      )}
+
       {/* Main Control Buttons */}
       <div className="flex justify-center gap-3 mb-6">
         <button
@@ -81,7 +96,6 @@ const TrainingControls: React.FC<TrainingControlsProps> = ({
           <span className="ml-2">{isRunning ? 'Stop' : 'Start'}</span>
         </button>
         
-        
         <button
           onClick={onReset}
           className="btn-secondary"
@@ -90,55 +104,66 @@ const TrainingControls: React.FC<TrainingControlsProps> = ({
           <RotateCcw size={18} />
           <span className="ml-2">Reset</span>
         </button>
+
+        {/* Global Lock Toggle (only when running) */}
+        {isRunning && (
+          <button
+            onClick={onToggleLock}
+            className={`btn-training ${
+              controlsLocked 
+                ? 'bg-warning text-warning-foreground' 
+                : 'bg-success text-success-foreground'
+            }`}
+            aria-label={`${controlsLocked ? 'Unlock' : 'Lock'} all controls`}
+          >
+            {controlsLocked ? <Lock size={18} /> : <LockOpen size={18} />}
+            <span className="ml-2">{controlsLocked ? 'Unlock' : 'Lock'}</span>
+          </button>
+        )}
       </div>
 
       {/* Settings Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Delay Control */}
-        <div className="space-y-2">
-          <label className="flex items-center justify-between text-sm font-medium text-card-foreground">
-            <span>Delay</span>
-            <span className="text-success">{delay}s</span>
-          </label>
-          <input
-            type="range"
-            min="1"
-            max="10"
-            value={delay}
-            onChange={(e) => onDelayChange(Number(e.target.value))}
-            className="slider-input"
-            aria-label="Training delay in seconds"
-          />
-        </div>
+        {/* Mobile-Safe Delay Control */}
+        <MobileSafeSlider
+          label="Delay"
+          value={delay}
+          min={1}
+          max={10}
+          step={1}
+          unit="s"
+          locked={controlsLocked}
+          onValueChange={onDelayChange}
+          onToggleLock={isRunning ? onToggleLock : undefined}
+        />
 
-        {/* Timer Control */}
-        <div className="space-y-2">
-          <label className="flex items-center justify-between text-sm font-medium text-card-foreground">
-            <span>Timer</span>
-            <span className="text-success">{formatTime(timerValue)}</span>
-          </label>
-          <input
-            type="range"
-            min="0"
-            max="600"
-            step="30"
-            value={timerValue}
-            onChange={(e) => onTimerChange(Number(e.target.value))}
-            className="slider-input"
-            aria-label="Training timer in seconds"
-          />
-        </div>
+        {/* Mobile-Safe Timer Control */}
+        <MobileSafeSlider
+          label="Timer"
+          value={timerValue}
+          min={0}
+          max={600}
+          step={30}
+          locked={controlsLocked}
+          onValueChange={onTimerChange}
+          onToggleLock={isRunning ? onToggleLock : undefined}
+          formatter={formatTime}
+        />
 
         {/* Mode Selection */}
         <div className="space-y-2">
-          <label className="text-sm font-medium text-card-foreground">
-            Training Mode
+          <label className="flex items-center gap-2 text-sm font-medium text-card-foreground">
+            <span>Training Mode</span>
+            {controlsLocked && <Lock size={14} className="text-warning" />}
           </label>
           <select
             value={mode}
             onChange={(e) => onModeChange(e.target.value)}
-            className="w-full px-3 py-2 bg-input border border-border rounded-lg text-card-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            aria-label="Select training mode"
+            disabled={controlsLocked}
+            className={`w-full px-3 py-2 bg-input border border-border rounded-lg text-card-foreground focus:outline-none focus:ring-2 focus:ring-ring ${
+              controlsLocked ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+            aria-label={`Select training mode ${controlsLocked ? '(locked)' : ''}`}
           >
             {TRAINING_MODES.map((modeOption) => (
               <option key={modeOption.value} value={modeOption.value}>

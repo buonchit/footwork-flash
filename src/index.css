@@ -116,6 +116,9 @@
     @apply relative rounded-2xl shadow-2xl;
     box-shadow: var(--shadow-court);
     background: var(--gradient-court);
+    /* Isolate court touches from controls */
+    touch-action: none;
+    isolation: isolate;
   }
 
   .court-position {
@@ -158,16 +161,33 @@
   .control-panel {
     @apply bg-card/80 backdrop-blur-sm border border-border rounded-2xl p-4;
     @apply shadow-lg;
+    /* Prevent touch events from bleeding through to court */
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
   }
 
   .slider-input {
     @apply w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer;
     @apply focus:outline-none focus:ring-2 focus:ring-ring;
+    /* Mobile-safe touch handling */
+    touch-action: pan-x;
+    pointer-events: auto;
   }
 
   .slider-input::-webkit-slider-thumb {
     @apply appearance-none w-5 h-5 rounded-full bg-success cursor-pointer;
     box-shadow: 0 2px 6px hsl(var(--success) / 0.3);
+    touch-action: manipulation;
+  }
+
+  .slider-input:disabled {
+    @apply opacity-50 cursor-not-allowed;
+    pointer-events: none;
   }
 
   .badge-version {

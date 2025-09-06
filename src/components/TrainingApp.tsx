@@ -34,6 +34,7 @@ interface TrainingState {
   ttsEnabled: boolean;
   activePosition: number | null;
   lastPosition: number | null;
+  controlsLocked: boolean; // Lock controls while running
 }
 
 const TrainingApp: React.FC = () => {
@@ -53,7 +54,8 @@ const TrainingApp: React.FC = () => {
       mode: 'full-court',
       ttsEnabled: false,
       activePosition: null,
-      lastPosition: null
+      lastPosition: null,
+      controlsLocked: true // Default to locked during training
     };
     
     if (saved) {
@@ -325,9 +327,9 @@ const TrainingApp: React.FC = () => {
         currentIdx: 0
       }));
       
-      // (d) Set running=true
+      // (d) Set running=true and lock controls
       currentRunningRef.current = true;
-      setState(prev => ({ ...prev, running: true }));
+      setState(prev => ({ ...prev, running: true, controlsLocked: true }));
       
       // (e) Prime audio/TTS opportunistically (non-blocking)
       const audioReady = await primeAudioContext();
@@ -423,14 +425,15 @@ const TrainingApp: React.FC = () => {
     console.log('[TRAINING] stopTraining: entering stop procedure');
     
     try {
-      // REQ-INT-1: Single source of truth - set running=false FIRST
+      // REQ-INT-1: Single source of truth - set running=false FIRST, unlock controls
       currentRunningRef.current = false;
       setState(prev => ({ 
         ...prev, 
         running: false, 
         starting: false,
         activePosition: null, 
-        timeRemaining: 0 
+        timeRemaining: 0,
+        controlsLocked: false 
       }));
       console.log('[TRAINING] stopTraining: set running=false');
       
@@ -516,7 +519,8 @@ const TrainingApp: React.FC = () => {
         mode: 'full-court',
         ttsEnabled: false,
         activePosition: null,
-        lastPosition: null
+        lastPosition: null,
+        controlsLocked: false
       });
       
       // Reset schedule counter
@@ -686,8 +690,8 @@ const TrainingApp: React.FC = () => {
         )}
       </main>
 
-      {/* Controls */}
-      <footer className={`px-4 py-6 ${state.running ? 'opacity-0 pointer-events-none' : 'opacity-100'} transition-opacity duration-300`}>
+      {/* Controls - Always Visible */}
+      <footer className={`px-4 py-6 ${state.running ? 'opacity-80' : 'opacity-100'} transition-opacity duration-300`}>
         <div className="max-w-4xl mx-auto">
           <TrainingControls
             isRunning={state.running}
@@ -696,6 +700,7 @@ const TrainingApp: React.FC = () => {
             timerValue={state.timerValue}
             mode={state.mode}
             ttsEnabled={state.ttsEnabled}
+            controlsLocked={state.controlsLocked}
             onStart={startTraining}
             onStop={stopTraining}
             onReset={hardReset}
@@ -704,6 +709,7 @@ const TrainingApp: React.FC = () => {
             onTimerChange={(timerValue) => setState(prev => ({ ...prev, timerValue, timeRemaining: timerValue }))}
             onModeChange={(mode) => setState(prev => ({ ...prev, mode, lastPosition: null }))}
             onTtsToggle={() => setState(prev => ({ ...prev, ttsEnabled: !prev.ttsEnabled }))}
+            onToggleLock={() => setState(prev => ({ ...prev, controlsLocked: !prev.controlsLocked }))}
           />
         </div>
       </footer>
