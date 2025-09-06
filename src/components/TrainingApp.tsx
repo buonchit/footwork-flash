@@ -295,7 +295,7 @@ const TrainingApp: React.FC = () => {
     }
   }, [getNextPosition, speakNumber, playBeep, state.ttsEnabled, state.timerValue, state.timeRemaining]);
 
-  // REQ-02: Start preconditions check
+  // REQ-TMR-COMP-1: Start preconditions check (timer compatibility)
   const checkStartPreconditions = useCallback((): { canStart: boolean; reason?: string } => {
     // Check if mode has valid positions
     const modePositions = getCurrentModePositions();
@@ -308,13 +308,12 @@ const TrainingApp: React.FC = () => {
       return { canStart: false, reason: "Session already active" };
     }
     
-    // Check timer conditions
-    if (state.timerValue > 0 && state.timeRemaining === 0) {
-      return { canStart: false, reason: "Timer is set but no time remaining. Please reset timer." };
-    }
+    // REQ-TMR-COMP-1: Timer OFF (Timer = 0) - always allow start
+    // REQ-TMR-COMP-1: Timer ON but expired - auto-rearm and start
+    // No blocking based on timeRemaining alone
     
     return { canStart: true };
-  }, [getCurrentModePositions, state.starting, state.timerValue, state.timeRemaining]);
+  }, [getCurrentModePositions, state.starting]);
 
   // REQ-02: Start watchdog - ensures first move happens within 700ms
   const startWatchdog = useCallback(() => {
@@ -395,10 +394,10 @@ const TrainingApp: React.FC = () => {
       sessionStartTimeRef.current = Date.now(); // REQ-Z1: Record session start time
       console.log(`[TRAINING] startTraining: session ${scheduleId} starting at t=0`);
       
-      // (c) Reset state
+      // (c) Reset state with auto-rearm timer
       setState(prev => ({
         ...prev,
-        timeRemaining: prev.timerValue,
+        timeRemaining: prev.timerValue, // REQ-TMR-COMP-1: Auto-rearm timer on start
         lastPosition: null,
         activePosition: null,
         currentIdx: 0,
@@ -465,7 +464,7 @@ const TrainingApp: React.FC = () => {
       // REQ-02: Start watchdog (disabled to prevent interference with scheduled pre-roll)
       // startWatchdog();
       
-      // REQ-03: Timer countdown
+      // REQ-TMR-COMP-3: Timer countdown only when TimerEnabled = TRUE
       if (state.timerValue > 0) {
         console.log(`[TRAINING] startTraining: starting ${state.timerValue}s countdown`);
         timerRef.current = setInterval(() => {
@@ -777,11 +776,17 @@ const TrainingApp: React.FC = () => {
                        transition-colors duration-200"
             aria-label="Stop Training"
           >
-            {state.timerValue > 0 && state.timeRemaining > 0 ? (
-              <span>STOP<br/>({Math.floor(state.timeRemaining / 60)}:{(state.timeRemaining % 60).toString().padStart(2, '0')})</span>
-            ) : (
-              <span>STOP</span>
-            )}
+            <div className="flex flex-col items-center">
+              <div className="text-8xl md:text-9xl font-bold text-white mb-2">
+                STOP
+              </div>
+              {/* REQ-TMR-COMP-3: Show countdown only when TimerEnabled = TRUE AND running */}
+              {state.timerValue > 0 && (
+                <div className="text-4xl md:text-5xl font-mono text-white/90">
+                  {Math.floor(state.timeRemaining / 60)}:{(state.timeRemaining % 60).toString().padStart(2, '0')}
+                </div>
+              )}
+            </div>
           </button>
         )}
       </main>

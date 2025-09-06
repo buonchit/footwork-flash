@@ -201,25 +201,31 @@
     }
   }
 
-  /* Dynamic arrow animation keyframes - force redraw with counter */
+  /* REQ-ARW-3: Solid arrow animation keyframes - no dashed effects */
   @keyframes arrow-draw {
-    from {
-      stroke-dashoffset: 100;
+    0% {
+      opacity: 0;
+      transform: scale(0.3);
     }
-    to {
-      stroke-dashoffset: 0;
+    50% {
+      opacity: 0.8;
+      transform: scale(1.1);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
     }
   }
 
-  /* Generate unique keyframes for arrow redraw counter */
-  @keyframes arrow-draw-0 { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
-  @keyframes arrow-draw-1 { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
-  @keyframes arrow-draw-2 { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
-  @keyframes arrow-draw-3 { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
-  @keyframes arrow-draw-4 { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
-  @keyframes arrow-draw-5 { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
-  @keyframes arrow-draw-6 { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
-  @keyframes arrow-draw-7 { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
-  @keyframes arrow-draw-8 { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
-  @keyframes arrow-draw-9 { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
+  /* Generate unique keyframes for arrow redraw counter (solid animation) */
+  @keyframes arrow-draw-0 { 0% { opacity: 0; transform: scale(0.3); } 50% { opacity: 0.8; transform: scale(1.1); } 100% { opacity: 1; transform: scale(1); } }
+  @keyframes arrow-draw-1 { 0% { opacity: 0; transform: scale(0.3); } 50% { opacity: 0.8; transform: scale(1.1); } 100% { opacity: 1; transform: scale(1); } }
+  @keyframes arrow-draw-2 { 0% { opacity: 0; transform: scale(0.3); } 50% { opacity: 0.8; transform: scale(1.1); } 100% { opacity: 1; transform: scale(1); } }
+  @keyframes arrow-draw-3 { 0% { opacity: 0; transform: scale(0.3); } 50% { opacity: 0.8; transform: scale(1.1); } 100% { opacity: 1; transform: scale(1); } }
+  @keyframes arrow-draw-4 { 0% { opacity: 0; transform: scale(0.3); } 50% { opacity: 0.8; transform: scale(1.1); } 100% { opacity: 1; transform: scale(1); } }
+  @keyframes arrow-draw-5 { 0% { opacity: 0; transform: scale(0.3); } 50% { opacity: 0.8; transform: scale(1.1); } 100% { opacity: 1; transform: scale(1); } }
+  @keyframes arrow-draw-6 { 0% { opacity: 0; transform: scale(0.3); } 50% { opacity: 0.8; transform: scale(1.1); } 100% { opacity: 1; transform: scale(1); } }
+  @keyframes arrow-draw-7 { 0% { opacity: 0; transform: scale(0.3); } 50% { opacity: 0.8; transform: scale(1.1); } 100% { opacity: 1; transform: scale(1); } }
+  @keyframes arrow-draw-8 { 0% { opacity: 0; transform: scale(0.3); } 50% { opacity: 0.8; transform: scale(1.1); } 100% { opacity: 1; transform: scale(1); } }
+  @keyframes arrow-draw-9 { 0% { opacity: 0; transform: scale(0.3); } 50% { opacity: 0.8; transform: scale(1.1); } 100% { opacity: 1; transform: scale(1); } }
 }

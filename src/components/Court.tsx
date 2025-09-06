@@ -169,35 +169,50 @@ const Court: React.FC<CourtProps> = ({ activePosition, arrowPosition, forceArrow
           </g>
         ))}
 
-        {/* Golden Arrow */}
+        {/* REQ-ARW: Solid, continuous arrow with attached arrowhead */}
         {arrowPosition && (
           <g className="arrow-pointer">
             <defs>
+              {/* REQ-ARW-2: Filled chevron/triangle head with precise orientation */}
               <marker
                 id="arrowhead"
-                markerWidth="10"
-                markerHeight="7"
-                refX="10"
-                refY="3.5"
+                markerWidth="14"
+                markerHeight="10"
+                refX="14"
+                refY="5"
                 orient="auto"
+                markerUnits="strokeWidth"
               >
                 <polygon
-                  points="0 0, 10 3.5, 0 7"
+                  points="0 0, 14 5, 0 10"
                   fill="hsl(var(--court-highlight))"
+                  stroke="none"
                 />
               </marker>
+              {/* REQ-ARW-1: Subtle outer glow for separation */}
+              <filter id="arrowGlow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                <feMerge> 
+                  <feMergeNode in="coloredBlur"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
             </defs>
+            {/* REQ-ARW-1: Thick, continuous stroke with rounded caps */}
             <path
               ref={arrowPathRef}
               d={`M ${centerPosition.x} ${centerPosition.y} L ${arrowPosition.x} ${arrowPosition.y}`}
               stroke="hsl(var(--court-highlight))"
-              strokeWidth="4"
+              strokeWidth="8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
               fill="none"
               markerEnd="url(#arrowhead)"
+              filter="url(#arrowGlow)"
               style={{
-                strokeDasharray: '100',
-                strokeDashoffset: '100',
-                animation: `arrow-draw-${forceArrowRedraw} 0.45s linear forwards`
+                // REQ-ARW-3: Animation restarts on each move
+                opacity: 0,
+                animation: `arrow-draw-${forceArrowRedraw} 0.45s ease-out forwards`
               }}
             />
             <circle
