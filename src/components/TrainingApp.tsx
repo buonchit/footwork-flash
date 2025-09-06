@@ -304,27 +304,25 @@ const TrainingApp: React.FC = () => {
       return;
     }
     
-    let selectedPosition: number;
-    setState(prev => {
-      const { position: nextPos, newDeck } = getNextPosition(prev.positionDeck, prev.lastPosition);
-      selectedPosition = nextPos;
-      return {
-        ...prev,
-        activePosition: nextPos,
-        lastPosition: nextPos,
-        currentIdx: prev.currentIdx + 1,
-        score: prev.score + 1,
-        positionDeck: newDeck // Update deck with remaining cards
-      };
-    });
+    // Get the next position first
+    const { position: nextPos, newDeck } = getNextPosition(state.positionDeck, state.lastPosition);
+    
+    setState(prev => ({
+      ...prev,
+      activePosition: nextPos,
+      lastPosition: nextPos,
+      currentIdx: prev.currentIdx + 1,
+      score: prev.score + 1,
+      positionDeck: newDeck // Update deck with remaining cards
+    }));
     
     // REQ-05: Force arrow redraw for every position change
     setArrowRedrawCounter(prev => prev + 1);
     
-    console.log(`[SCHEDULE-${scheduleId}] moveToNextPosition: moved to position ${selectedPosition}`);
+    console.log(`[SCHEDULE-${scheduleId}] moveToNextPosition: moved to position ${nextPos}`);
     
     // REQ-04: Non-blocking audio feedback - TTS fires exactly when arrow renders
-    speakNumber(selectedPosition);
+    speakNumber(nextPos);
     if (!state.ttsEnabled) {
       playBeep();
     }
