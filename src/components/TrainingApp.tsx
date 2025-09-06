@@ -182,23 +182,31 @@ const TrainingApp: React.FC = () => {
   }, []);
 
   // Build new shuffled deck from current mode positions
-  const buildNewDeck = useCallback((): number[] => {
-    const modePositions = getCurrentModePositions();
-    return shuffleDeck(modePositions);
-  }, [getCurrentModePositions, shuffleDeck]);
+  const buildNewDeck = useCallback((currentMode?: string): number[] => {
+    const mode = currentMode || state.mode;
+    const modePositions = MODE_POSITIONS[mode] || MODE_POSITIONS['full-court'];
+    const shuffled = shuffleDeck(modePositions);
+    console.log(`[DECK] Built new deck for mode ${mode}: positions [${modePositions.join(', ')}] -> shuffled [${shuffled.join(', ')}]`);
+    return shuffled;
+  }, [shuffleDeck, state.mode]);
 
   // Get next position from deck, handle consecutive repeats and deck rebuild
-  const getNextPosition = useCallback((currentDeck: number[], lastPos: number | null): { position: number; newDeck: number[] } => {
+  const getNextPosition = useCallback((currentDeck: number[], lastPos: number | null, currentMode?: string): { position: number; newDeck: number[] } => {
     let positionDeck = currentDeck;
+    
+    console.log(`[DECK] Current deck: [${positionDeck.join(', ')}], lastPos: ${lastPos}`);
     
     // If deck is empty, rebuild and shuffle
     if (positionDeck.length === 0) {
-      positionDeck = buildNewDeck();
+      positionDeck = buildNewDeck(currentMode);
+      console.log(`[DECK] Rebuilt deck: [${positionDeck.join(', ')}]`);
     }
     
     // Pop next position from deck
     let nextPos = positionDeck[0];
     let newDeck = positionDeck.slice(1);
+    
+    console.log(`[DECK] Popped position: ${nextPos}, remaining deck: [${newDeck.join(', ')}]`);
     
     // Handle consecutive repeats: if same as last position and deck has more cards, swap with next
     if (nextPos === lastPos && newDeck.length > 0) {
@@ -206,6 +214,7 @@ const TrainingApp: React.FC = () => {
       const swapPos = newDeck[0];
       newDeck = [nextPos, ...newDeck.slice(1)];
       nextPos = swapPos;
+      console.log(`[DECK] Swapped to avoid repeat: ${nextPos}, updated deck: [${newDeck.join(', ')}]`);
     }
     
     return {
@@ -305,7 +314,7 @@ const TrainingApp: React.FC = () => {
     }
     
     // Get the next position first
-    const { position: nextPos, newDeck } = getNextPosition(state.positionDeck, state.lastPosition);
+    const { position: nextPos, newDeck } = getNextPosition(state.positionDeck, state.lastPosition, state.mode);
     
     setState(prev => ({
       ...prev,
