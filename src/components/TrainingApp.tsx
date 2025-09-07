@@ -192,9 +192,25 @@ const TrainingApp: React.FC = () => {
 
   // Get next position from deck, handle consecutive repeats and deck rebuild
   const getNextPosition = useCallback((currentDeck: number[], lastPos: number | null, currentMode?: string): { position: number; newDeck: number[] } => {
-    let positionDeck = currentDeck;
+    const mode = currentMode || state.mode;
+    const modePositions = MODE_POSITIONS[mode] || MODE_POSITIONS['full-court'];
     
-    console.log(`[DECK] Current deck: [${positionDeck.join(', ')}], lastPos: ${lastPos}`);
+    console.log(`[DECK] Current deck: [${currentDeck.join(', ')}], lastPos: ${lastPos}`);
+    
+    // Special handling for 2-position modes to ensure true randomness
+    if (modePositions.length === 2) {
+      // For 2-position modes, use direct random selection with 50/50 probability
+      const randomPos = modePositions[Math.random() < 0.5 ? 0 : 1];
+      console.log(`[DECK] 2-position mode: random selection ${randomPos} from [${modePositions.join(', ')}]`);
+      
+      return {
+        position: randomPos,
+        newDeck: [] // Keep deck empty for 2-position modes to always use random selection
+      };
+    }
+    
+    // Standard deck algorithm for 3+ positions
+    let positionDeck = currentDeck;
     
     // If deck is empty, rebuild and shuffle
     if (positionDeck.length === 0) {
@@ -221,7 +237,7 @@ const TrainingApp: React.FC = () => {
       position: nextPos,
       newDeck: newDeck
     };
-  }, [buildNewDeck]);
+  }, [buildNewDeck, state.mode]);
 
   // REQ-05: Force arrow redraw counter for repeat animations
   const [arrowRedrawCounter, setArrowRedrawCounter] = React.useState(0);
