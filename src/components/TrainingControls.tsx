@@ -5,6 +5,7 @@ import MobileSafeSlider from './MobileSafeSlider';
 interface TrainingControlsProps {
   isRunning: boolean;
   score: number;
+  totalScore: number;
   delay: number;
   timerValue: number;
   mode: string;
@@ -43,6 +44,7 @@ const TRAINING_MODES = [
 const TrainingControls: React.FC<TrainingControlsProps> = ({
   isRunning,
   score,
+  totalScore,
   delay,
   timerValue,
   mode,
@@ -67,11 +69,17 @@ const TrainingControls: React.FC<TrainingControlsProps> = ({
   return (
     <div className="control-panel">
       {/* Score Display */}
-      <div className="flex justify-center mb-6">
+      <div className="flex justify-center mb-6 gap-4">
         <div className="bg-success/20 rounded-2xl px-6 py-3 border border-success/30">
           <div className="text-center">
             <div className="text-2xl font-bold text-success">{score}</div>
             <div className="text-xs text-success/80">Score</div>
+          </div>
+        </div>
+        <div className="bg-primary/20 rounded-2xl px-6 py-3 border border-primary/30">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-primary">{totalScore}</div>
+            <div className="text-xs text-primary/80">Total Score</div>
           </div>
         </div>
       </div>

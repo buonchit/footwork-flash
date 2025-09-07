@@ -27,6 +27,7 @@ interface TrainingState {
   starting: boolean; // REQ-02: Prevent re-entry during start handshake
   currentIdx: number;
   score: number;
+  totalScore: number; // Total score across all training sessions
   delay: number;
   timerValue: number;
   timeRemaining: number;
@@ -49,6 +50,7 @@ const TrainingApp: React.FC = () => {
       starting: false, // REQ-02: Prevent re-entry during start handshake
       currentIdx: 0,
       score: 0,
+      totalScore: 0, // Total score across all training sessions
       delay: 3,
       timerValue: 300, // 5 minutes default
       timeRemaining: 0,
@@ -349,6 +351,7 @@ const TrainingApp: React.FC = () => {
         lastPosition: nextPos,
         currentIdx: prev.currentIdx + 1,
         score: prev.score + 1,
+        totalScore: prev.totalScore + 1, // Increment total score
         positionDeck: newDeck // Update deck with remaining cards
       };
     });
@@ -627,6 +630,7 @@ const TrainingApp: React.FC = () => {
         starting: false,
         currentIdx: 0,
         score: 0,
+        totalScore: 0, // Reset total score on hard reset
         delay: 3,
         timerValue: 0,
         timeRemaining: 0,
@@ -961,6 +965,7 @@ const TrainingApp: React.FC = () => {
           <TrainingControls
             isRunning={state.running}
             score={state.score}
+            totalScore={state.totalScore}
             delay={state.delay}
             timerValue={state.timerValue}
             mode={state.mode}
