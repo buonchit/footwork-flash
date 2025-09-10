@@ -202,8 +202,8 @@ const TrainingControls: React.FC<TrainingControlsProps> = ({
         </div>
       </div>
 
-      {/* Home Button */}
-      <div className="flex justify-center mt-6">
+      {/* Navigation Buttons */}
+      <div className="flex justify-center mt-6 gap-3 flex-wrap">
         <button
           onClick={onHome}
           className="btn-secondary"
@@ -211,6 +211,34 @@ const TrainingControls: React.FC<TrainingControlsProps> = ({
         >
           <Home size={18} />
           <span className="ml-2">Home</span>
+        </button>
+        
+        <button
+          className="btn-secondary"
+          aria-label="Go to Badminton"
+        >
+          <span>Badminton</span>
+        </button>
+        
+        <button
+          className="btn-secondary"
+          aria-label="Go to Pickleball"
+        >
+          <span>Pickleball</span>
+        </button>
+        
+        <button
+          className="btn-secondary"
+          aria-label="Go to Table Tennis"
+        >
+          <span>Table Tennis</span>
+        </button>
+        
+        <button
+          className="btn-secondary"
+          aria-label="Go to Tennis"
+        >
+          <span>Tennis</span>
         </button>
       </div>
     </div>
