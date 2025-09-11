@@ -216,6 +216,14 @@ const TrainingControls: React.FC<TrainingControlsProps> = ({
         </button>
         
         <button
+          onClick={() => navigate('/multi-sport')}
+          className="btn-primary"
+          aria-label="Go to Multi-Sport Hub"
+        >
+          <span>Multi-Sport</span>
+        </button>
+        
+        <button
           onClick={() => navigate('/badminton')}
           className="btn-secondary"
           aria-label="Go to Badminton"
