@@ -207,15 +207,6 @@ const TrainingControls: React.FC<TrainingControlsProps> = ({
       {/* Navigation Buttons */}
       <div className="flex justify-center mt-6 gap-3 flex-wrap">
         <button
-          onClick={onHome}
-          className="btn-secondary"
-          aria-label="Return to home"
-        >
-          <Home size={18} />
-          <span className="ml-2">Home</span>
-        </button>
-        
-        <button
           onClick={() => navigate('/multi-sport')}
           className="btn-primary"
           aria-label="Go to Multi-Sport Hub"
@@ -253,6 +244,23 @@ const TrainingControls: React.FC<TrainingControlsProps> = ({
           aria-label="Go to Tennis"
         >
           <span>Tennis</span>
+        </button>
+        
+        <button
+          onClick={() => navigate('/how-it-works')}
+          className="btn-secondary"
+          aria-label="Go to How It Works"
+        >
+          <span>How It Works</span>
+        </button>
+        
+        <button
+          onClick={onHome}
+          className="btn-secondary"
+          aria-label="Return to home"
+        >
+          <Home size={18} />
+          <span className="ml-2">Home</span>
         </button>
       </div>
     </div>
