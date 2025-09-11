@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from "@/components/ui/button";
+import { Play, Pause, RotateCcw, Lock, LockOpen } from 'lucide-react';
 import Court, { POSITIONS } from './Court';
 import TrainingControls, { TRAINING_MODES } from './TrainingControls';
 import { useToast } from '../hooks/use-toast';
@@ -903,7 +904,7 @@ const TrainingApp: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
-      <header className="text-center py-6 px-4 fade-in">
+      <header className="text-center py-4 px-4 fade-in">
         <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
           Master Footwork
         </h1>
@@ -923,6 +924,74 @@ const TrainingApp: React.FC = () => {
           </div>
         )}
       </header>
+
+      {/* Main Control Buttons - Always Visible at Top */}
+      <div className="px-4 py-4 bg-card/50 border-b border-border">
+        <div className="max-w-4xl mx-auto">
+          {/* Score Display */}
+          <div className="flex justify-center mb-4 gap-4">
+            <div className="bg-success/20 rounded-2xl px-6 py-3 border border-success/30">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-success">{state.score}</div>
+                <div className="text-xs text-success/80">Score</div>
+              </div>
+            </div>
+            <div className="bg-primary/20 rounded-2xl px-6 py-3 border border-primary/30">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-primary">{state.totalScore}</div>
+                <div className="text-xs text-primary/80">Total Score</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Lock Status Indicator */}
+          {state.running && state.controlsLocked && (
+            <div className="flex justify-center mb-4">
+              <div className="bg-warning/20 text-warning px-3 py-1 rounded-full text-xs font-medium border border-warning/30 flex items-center gap-2">
+                <Lock size={12} />
+                Controls Locked
+              </div>
+            </div>
+          )}
+
+          {/* START/STOP/RESET Buttons */}
+          <div className="flex justify-center gap-3">
+            <button
+              onClick={state.running ? stopTraining : startTraining}
+              className={state.running ? 'btn-warning' : 'btn-success'}
+              aria-label={state.running ? 'Stop training' : 'Start training'}
+            >
+              {state.running ? <Pause size={18} /> : <Play size={18} />}
+              <span className="ml-2">{state.running ? 'Stop' : 'Start'}</span>
+            </button>
+            
+            <button
+              onClick={hardReset}
+              className="btn-secondary"
+              aria-label="Reset training"
+            >
+              <RotateCcw size={18} />
+              <span className="ml-2">Reset</span>
+            </button>
+
+            {/* Global Lock Toggle (only when running) */}
+            {state.running && (
+              <button
+                onClick={handleToggleLock}
+                className={`btn-training ${
+                  state.controlsLocked 
+                    ? 'bg-warning text-warning-foreground' 
+                    : 'bg-success text-success-foreground'
+                }`}
+                aria-label={`${state.controlsLocked ? 'Unlock' : 'Lock'} all controls`}
+              >
+                {state.controlsLocked ? <Lock size={18} /> : <LockOpen size={18} />}
+                <span className="ml-2">{state.controlsLocked ? 'Unlock' : 'Lock'}</span>
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Court */}
       <main className="flex-1 flex items-center justify-center px-4 slide-up relative">
