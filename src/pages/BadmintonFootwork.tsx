@@ -109,6 +109,7 @@ const BadmintonFootwork = () => {
               Mastering badminton footwork drills is the fastest way to raise your game. 
               With the right training techniques, you'll move quicker, recover faster, and dominate the court.
               These proven exercises are designed for players who want to improve speed, agility, and endurance through structured practice.
+              Explore our <button onClick={() => navigate('/multi-sport')} className="text-primary hover:text-primary/80 underline">complete racket sports footwork training hub</button> for comprehensive cross-sport techniques.
             </p>
           </div>
         </div>
@@ -273,6 +274,13 @@ const BadmintonFootwork = () => {
             Explore More Footwork Training
           </h3>
           <div className="flex flex-wrap justify-center gap-4">
+            <button 
+              onClick={() => navigate('/multi-sport')}
+              className="text-primary hover:text-primary/80 transition-colors font-medium text-lg"
+            >
+              All Racket Sports Hub
+            </button>
+            <span className="text-muted-foreground">|</span>
             <button 
               onClick={() => navigate('/tennis')}
               className="text-primary hover:text-primary/80 transition-colors font-medium"

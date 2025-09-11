@@ -108,6 +108,7 @@ const TennisFootwork = () => {
             <p className="text-lg text-muted-foreground leading-relaxed">
               Mastering tennis footwork drills is fundamental to competitive success on the court. 
               These proven exercises will enhance your speed, agility, and positioning, giving you the edge needed to reach every shot with confidence and power.
+              Visit our <button onClick={() => navigate('/multi-sport')} className="text-primary hover:text-primary/80 underline">racket sports footwork hub</button> to discover techniques that work across all court sports.
             </p>
           </div>
         </div>
@@ -246,6 +247,13 @@ const TennisFootwork = () => {
             Explore More Footwork Training
           </h3>
           <div className="flex flex-wrap justify-center gap-4">
+            <button 
+              onClick={() => navigate('/multi-sport')}
+              className="text-primary hover:text-primary/80 transition-colors font-medium text-lg"
+            >
+              All Racket Sports Hub
+            </button>
+            <span className="text-muted-foreground">|</span>
             <button 
               onClick={() => navigate('/badminton')}
               className="text-primary hover:text-primary/80 transition-colors font-medium"

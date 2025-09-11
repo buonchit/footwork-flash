@@ -88,6 +88,7 @@ const PickleballFootwork = () => {
               Effective pickleball footwork drills are the foundation of competitive play. 
               These simple yet powerful exercises will enhance your balance, agility, and reaction time, 
               helping you control the court and respond quickly to every shot.
+              Discover more movement techniques in our <button onClick={() => navigate('/multi-sport')} className="text-primary hover:text-primary/80 underline">comprehensive racket sports training hub</button>.
             </p>
           </div>
         </div>
@@ -237,6 +238,13 @@ const PickleballFootwork = () => {
             Explore More Footwork Training
           </h3>
           <div className="flex flex-wrap justify-center gap-4">
+            <button 
+              onClick={() => navigate('/multi-sport')}
+              className="text-primary hover:text-primary/80 transition-colors font-medium text-lg"
+            >
+              All Racket Sports Hub
+            </button>
+            <span className="text-muted-foreground">|</span>
             <button 
               onClick={() => navigate('/badminton')}
               className="text-primary hover:text-primary/80 transition-colors font-medium"

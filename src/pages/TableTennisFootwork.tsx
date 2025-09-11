@@ -108,6 +108,7 @@ const TableTennisFootwork = () => {
             <p className="text-lg text-muted-foreground leading-relaxed">
               Effective table tennis footwork drills are essential for developing the quick, precise movements needed for competitive play. 
               These proven exercises will help you improve positioning, balance, and reaction time, leading to more consistent and powerful shots.
+              Check out our <button onClick={() => navigate('/multi-sport')} className="text-primary hover:text-primary/80 underline">multi-sport footwork training center</button> for techniques that enhance performance across all racket sports.
             </p>
           </div>
         </div>
@@ -246,6 +247,13 @@ const TableTennisFootwork = () => {
             Explore More Footwork Training
           </h3>
           <div className="flex flex-wrap justify-center gap-4">
+            <button 
+              onClick={() => navigate('/multi-sport')}
+              className="text-primary hover:text-primary/80 transition-colors font-medium text-lg"
+            >
+              All Racket Sports Hub
+            </button>
+            <span className="text-muted-foreground">|</span>
             <button 
               onClick={() => navigate('/badminton')}
               className="text-primary hover:text-primary/80 transition-colors font-medium"
