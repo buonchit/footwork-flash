@@ -955,6 +955,31 @@ const TrainingApp: React.FC = () => {
             </div>
           </button>
         )}
+
+        {/* Centered Start Overlay - shown when not running */}
+        {!state.running && (
+          <button
+            id="startOverlayBtn"
+            onClick={startTraining}
+            className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 
+                       w-32 h-32 md:w-40 md:h-40 
+                       rounded-full flex items-center justify-center font-bold 
+                       hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/50
+                       transition-all duration-200 z-50"
+            style={{
+              background: 'linear-gradient(135deg, #16a34a, #15803d)',
+              color: 'white',
+              border: '3px solid rgba(255,255,255,0.2)',
+              boxShadow: '0 8px 32px rgba(22, 163, 74, 0.4)',
+              fontSize: 'clamp(1.2rem, 6vw, 2rem)'
+            }}
+            aria-label="Start Training"
+          >
+            <div className="text-center leading-tight">
+              <div className="font-black tracking-wide">START</div>
+            </div>
+          </button>
+        )}
       </main>
 
       {/* REQ-08: Controls - Always Visible */}
