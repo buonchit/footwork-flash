@@ -224,6 +224,7 @@ const TrainingControls: React.FC<TrainingControlsProps> = ({
         </button>
         
         <button
+          onClick={() => navigate('/pickleball')}
           className="btn-secondary"
           aria-label="Go to Pickleball"
         >
