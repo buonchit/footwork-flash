@@ -248,6 +248,13 @@ const TableTennisFootwork = () => {
           </h3>
           <div className="flex flex-wrap justify-center gap-4">
             <button 
+              onClick={() => navigate('/how-it-works')}
+              className="text-primary hover:text-primary/80 transition-colors font-medium text-lg"
+            >
+              How It Works
+            </button>
+            <span className="text-muted-foreground">|</span>
+            <button 
               onClick={() => navigate('/multi-sport')}
               className="text-primary hover:text-primary/80 transition-colors font-medium text-lg"
             >

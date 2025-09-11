@@ -246,6 +246,14 @@ const RacketSportsFootwork = () => {
           <p className="text-muted-foreground text-lg mb-6">
             Choose your sport and start mastering the movement patterns that will transform your game.
           </p>
+          <div className="flex flex-wrap justify-center gap-3 mb-4">
+            <button
+              onClick={() => navigate('/how-it-works')}
+              className="bg-secondary text-secondary-foreground px-6 py-2 rounded-lg hover:bg-secondary/90 transition-colors font-medium"
+            >
+              How It Works
+            </button>
+          </div>
           <div className="flex flex-wrap justify-center gap-3">
             {sports.map((sport, index) => (
               <button

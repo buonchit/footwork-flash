@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Button } from "@/components/ui/button";
 import Court, { POSITIONS } from './Court';
 import TrainingControls, { TRAINING_MODES } from './TrainingControls';
 import { useToast } from '../hooks/use-toast';
@@ -906,8 +907,15 @@ const TrainingApp: React.FC = () => {
         <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
           Master Footwork
         </h1>
-        <div className="badge-version">
-          v6.0
+        <div className="mt-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => window.open('/how-it-works', '_blank')}
+            className="text-sm font-medium"
+          >
+            How It Works
+          </Button>
         </div>
         {state.timeRemaining > 0 && state.running && (
           <div className="mt-4 text-warning font-mono text-lg">
