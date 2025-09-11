@@ -1,5 +1,6 @@
 import React from 'react';
 import { Play, Pause, RotateCcw, Home, Volume2, Lock, LockOpen } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import MobileSafeSlider from './MobileSafeSlider';
 
 interface TrainingControlsProps {
@@ -60,6 +61,7 @@ const TrainingControls: React.FC<TrainingControlsProps> = ({
   onTtsToggle,
   onToggleLock
 }) => {
+  const navigate = useNavigate();
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -214,6 +216,7 @@ const TrainingControls: React.FC<TrainingControlsProps> = ({
         </button>
         
         <button
+          onClick={() => navigate('/badminton')}
           className="btn-secondary"
           aria-label="Go to Badminton"
         >
