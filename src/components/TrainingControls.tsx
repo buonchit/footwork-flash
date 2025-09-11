@@ -70,6 +70,68 @@ const TrainingControls: React.FC<TrainingControlsProps> = ({
 
   return (
     <div className="control-panel">
+      {/* Score Display */}
+      <div className="flex justify-center mb-6 gap-4">
+        <div className="bg-success/20 rounded-2xl px-6 py-3 border border-success/30">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-success">{score}</div>
+            <div className="text-xs text-success/80">Score</div>
+          </div>
+        </div>
+        <div className="bg-primary/20 rounded-2xl px-6 py-3 border border-primary/30">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-primary">{totalScore}</div>
+            <div className="text-xs text-primary/80">Total Score</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Lock Status Indicator */}
+      {isRunning && controlsLocked && (
+        <div className="flex justify-center mb-4">
+          <div className="bg-warning/20 text-warning px-3 py-1 rounded-full text-xs font-medium border border-warning/30 flex items-center gap-2">
+            <Lock size={12} />
+            Controls Locked
+          </div>
+        </div>
+      )}
+
+      {/* Main Control Buttons */}
+      <div className="flex justify-center gap-3 mb-6">
+        <button
+          onClick={isRunning ? onStop : onStart}
+          className={isRunning ? 'btn-warning' : 'btn-success'}
+          aria-label={isRunning ? 'Stop training' : 'Start training'}
+        >
+          {isRunning ? <Pause size={18} /> : <Play size={18} />}
+          <span className="ml-2">{isRunning ? 'Stop' : 'Start'}</span>
+        </button>
+        
+        <button
+          onClick={onReset}
+          className="btn-secondary"
+          aria-label="Reset training"
+        >
+          <RotateCcw size={18} />
+          <span className="ml-2">Reset</span>
+        </button>
+
+        {/* Global Lock Toggle (only when running) */}
+        {isRunning && (
+          <button
+            onClick={onToggleLock}
+            className={`btn-training ${
+              controlsLocked 
+                ? 'bg-warning text-warning-foreground' 
+                : 'bg-success text-success-foreground'
+            }`}
+            aria-label={`${controlsLocked ? 'Unlock' : 'Lock'} all controls`}
+          >
+            {controlsLocked ? <Lock size={18} /> : <LockOpen size={18} />}
+            <span className="ml-2">{controlsLocked ? 'Unlock' : 'Lock'}</span>
+          </button>
+        )}
+      </div>
 
       {/* Settings Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
