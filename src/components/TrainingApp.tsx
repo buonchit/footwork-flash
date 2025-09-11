@@ -907,11 +907,6 @@ const TrainingApp: React.FC = () => {
         <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
           Master Footwork
         </h1>
-        {state.timeRemaining > 0 && state.running && (
-          <div className="mt-4 text-warning font-mono text-lg">
-            Time: {Math.floor(state.timeRemaining / 60)}:{(state.timeRemaining % 60).toString().padStart(2, '0')}
-          </div>
-        )}
       </header>
 
       {/* Court */}
