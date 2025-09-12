@@ -38,6 +38,7 @@ interface TrainingState {
   lastPosition: number | null;
   controlsLocked: boolean; // REQ-09: Lock controls while running
   positionDeck: number[]; // Shuffle bucket: deck of positions to draw from
+  schemaVersion: number; // For state migrations
 }
 
 const TrainingApp: React.FC = () => {
@@ -53,20 +54,33 @@ const TrainingApp: React.FC = () => {
       score: 0,
       totalScore: 0, // Total score across all training sessions
       delay: 3,
-      timerValue: 300, // 5 minutes default
+      timerValue: 0, // Default OFF (0:00) on first load
       timeRemaining: 0,
       mode: 'full-court',
       ttsEnabled: false,
       activePosition: null,
       lastPosition: null,
-      controlsLocked: true, // REQ-09: Default to locked during training
-      positionDeck: [] // Shuffle bucket: initialize empty deck
+      controlsLocked: false, // Unlocked by default on first visit
+      positionDeck: [], // Shuffle bucket: initialize empty deck
+      schemaVersion: 2
     };
     
     if (saved) {
       try {
         const parsedState = JSON.parse(saved);
-        return { ...defaultState, ...parsedState, running: false };
+        // Merge with defaults first
+        let mergedState = { ...defaultState, ...parsedState, running: false } as TrainingState;
+        // Migration: ensure new defaults for v2
+        if (!parsedState.schemaVersion || parsedState.schemaVersion < 2) {
+          mergedState = {
+            ...mergedState,
+            timerValue: 0, // Timer OFF by default
+            timeRemaining: 0,
+            controlsLocked: false, // Unlocked by default
+            schemaVersion: 2
+          };
+        }
+        return mergedState;
       } catch (e) {
         console.warn('Failed to load saved state:', e);
       }
@@ -640,7 +654,8 @@ const TrainingApp: React.FC = () => {
         activePosition: null,
         lastPosition: null,
         controlsLocked: false,
-        positionDeck: [] // Shuffle bucket: reset deck on hard reset
+        positionDeck: [], // Shuffle bucket: reset deck on hard reset
+        schemaVersion: 2
       });
       
       // Reset schedule counter
