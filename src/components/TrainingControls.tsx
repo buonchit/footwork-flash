@@ -32,14 +32,14 @@ const TRAINING_MODES = [
   { value: 'left-side', label: 'Left Side (1-7-8)' },
   { value: 'right-side', label: 'Right Side (3-4-5)' },
   { value: 'random-1-2-3-4-8', label: 'Random 1-2-3-4-8' },
-  { value: 'random-4-5-6-7-8', label: 'Random 4-5-6-7-8' },
-  { value: 'random-4-8', label: 'Random 4-8' },
-  { value: 'random-2-4-6-8', label: 'Random 2-4-6-8' },
+  { value: 'random-1-3-6', label: 'Random 1-3-6' },
   { value: 'random-1-5', label: 'Random 1-5' },
+  { value: 'random-2-4-6-8', label: 'Random 2-4-6-8' },
   { value: 'random-2-6', label: 'Random 2-6' },
   { value: 'random-3-7', label: 'Random 3-7' },
-  { value: 'random-5-7', label: 'Random 5-7' },
-  { value: 'random-1-3-6', label: 'Random 1-3-6' }
+  { value: 'random-4-5-6-7-8', label: 'Random 4-5-6-7-8' },
+  { value: 'random-4-8', label: 'Random 4-8' },
+  { value: 'random-5-7', label: 'Random 5-7' }
 ];
 
 const TrainingControls: React.FC<TrainingControlsProps> = ({
